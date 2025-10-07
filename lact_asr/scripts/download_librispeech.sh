@@ -158,11 +158,26 @@ download_subset() {
             print_status "File size: $(format_bytes $file_size)"
         fi
         
-        # Download with progress bar
+        # Download with progress bar and better timeout handling
         if command -v wget >/dev/null 2>&1; then
-            wget --progress=bar:force:noscroll -O "$archive_path" "$download_url"
+            # Use wget with reasonable timeouts and retries
+            wget --progress=bar:force:noscroll \
+                 --timeout=30 \
+                 --tries=5 \
+                 --wait=10 \
+                 --retry-connrefused \
+                 --continue \
+                 -O "$archive_path" "$download_url"
         elif command -v curl >/dev/null 2>&1; then
-            curl -L --progress-bar -o "$archive_path" "$download_url"
+            # Use curl with timeouts and retries
+            curl -L --progress-bar \
+                 --connect-timeout 30 \
+                 --max-time 3600 \
+                 --retry 5 \
+                 --retry-delay 10 \
+                 --retry-max-time 7200 \
+                 --continue-at - \
+                 -o "$archive_path" "$download_url"
         else
             print_error "Neither wget nor curl found. Please install one of them."
             return 1
@@ -170,6 +185,15 @@ download_subset() {
         
         if [[ $? -ne 0 ]]; then
             print_error "Failed to download $subset"
+            print_error "This may be due to:"
+            print_error "  - Network connectivity issues"
+            print_error "  - Firewall blocking outbound connections"
+            print_error "  - openslr.org being unavailable"
+            print_error ""
+            print_error "Alternative solutions:"
+            print_error "  1. Download manually from: $download_url"
+            print_error "  2. Use HuggingFace datasets (see README)"
+            print_error "  3. Contact your HPC admin about network access"
             rm -f "$archive_path"
             return 1
         fi
