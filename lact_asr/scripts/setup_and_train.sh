@@ -30,7 +30,7 @@ export HOME="/nfs/stak/users/limjar"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Change to project directory
-cd /nfs/stak/users/limjar/hpc-share/LaCT/LaCT/lact_asr
+cd /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
 
 # Default configuration
 DEFAULT_DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT"
