@@ -265,6 +265,24 @@ def download_librispeech_hf(data_dir: str, subsets: list, validate: bool = True,
         validate: Whether to validate the dataset after download
         save_samples: Whether to save sample audio files for inspection
     """
+    # Mapping from openslr.org subset names to HuggingFace config and split
+    SUBSET_MAPPING = {
+        'train.clean.100': ('clean', 'train.100'),
+        'train-clean-100': ('clean', 'train.100'),
+        'train.clean.360': ('clean', 'train.360'),
+        'train-clean-360': ('clean', 'train.360'),
+        'train.other.500': ('other', 'train.500'),
+        'train-other-500': ('other', 'train.500'),
+        'dev.clean': ('clean', 'validation'),
+        'dev-clean': ('clean', 'validation'),
+        'dev.other': ('other', 'validation'),
+        'dev-other': ('other', 'validation'),
+        'test.clean': ('clean', 'test'),
+        'test-clean': ('clean', 'test'),
+        'test.other': ('other', 'test'),
+        'test-other': ('other', 'test'),
+    }
+    
     data_dir = Path(data_dir)
     librispeech_dir = data_dir / "LibriSpeech"
     
@@ -277,23 +295,35 @@ def download_librispeech_hf(data_dir: str, subsets: list, validate: bool = True,
         print(f"Processing subset: {subset}")
         print(f"{'='*60}")
         
-        # Convert subset name format (train-clean-100 -> train.clean.100)
-        hf_subset = subset.replace('-', '.')
+        # Normalize subset name
+        subset_normalized = subset.replace('-', '.')
+        
+        # Get HuggingFace config and split
+        if subset_normalized not in SUBSET_MAPPING:
+            print(f"✗ Unknown subset: {subset}")
+            print(f"Available subsets: {', '.join(set([k for k in SUBSET_MAPPING.keys() if '.' in k]))}")
+            sys.exit(1)
+        
+        hf_config, hf_split = SUBSET_MAPPING[subset_normalized]
+        
+        # Output directory uses openslr.org naming (with dashes)
+        output_subset_name = subset_normalized.replace('.', '-')
         
         try:
             # Load dataset from HuggingFace
-            print(f"Loading {hf_subset} from HuggingFace...")
-            dataset = load_dataset("librispeech_asr", hf_subset, split="train")
+            print(f"Loading from HuggingFace: config='{hf_config}', split='{hf_split}'...")
+            dataset = load_dataset("librispeech_asr", hf_config, split=hf_split)
             
             # Create directory structure matching openslr.org format
-            subset_dir = librispeech_dir / subset
+            subset_dir = librispeech_dir / output_subset_name
             subset_dir.mkdir(parents=True, exist_ok=True)
             
             print(f"Converting {len(dataset)} samples to LibriSpeech format...")
+            print(f"Output directory: {subset_dir}")
             
             # Group samples by speaker and chapter
             samples_by_speaker = {}
-            for sample in tqdm(dataset, desc=f"Processing {subset}"):
+            for sample in tqdm(dataset, desc=f"Processing {output_subset_name}"):
                 speaker_id = sample['speaker_id']
                 chapter_id = sample['chapter_id']
                 utterance_id = sample['id']
@@ -329,10 +359,12 @@ def download_librispeech_hf(data_dir: str, subsets: list, validate: bool = True,
                     for utterance_id, text in sorted(samples):
                         f.write(f"{utterance_id} {text}\n")
             
-            print(f"✓ Successfully downloaded {subset}")
+            print(f"✓ Successfully downloaded {output_subset_name}")
             
         except Exception as e:
             print(f"✗ Error downloading {subset}: {e}")
+            import traceback
+            traceback.print_exc()
             sys.exit(1)
     
     print(f"\n{'='*60}")
