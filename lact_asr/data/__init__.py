@@ -5,7 +5,8 @@ from .asr_dataset import (
     LibriSpeechDataset, 
     CommonVoiceDataset,
     ASRDataCollator,
-    create_vocab_from_transcripts
+    create_vocab_from_transcripts,
+    create_asr_dataloader
 )
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "LibriSpeechDataset",
     "CommonVoiceDataset", 
     "ASRDataCollator",
-    "create_vocab_from_transcripts"
+    "create_vocab_from_transcripts",
+    "create_asr_dataloader"
 ]
