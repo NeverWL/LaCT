@@ -3,15 +3,12 @@
 #SBATCH -J lact_asr_setup_train
 #SBATCH -A eecs
 #SBATCH -p dgxh
-#SBATCH --gres=gpu:2
-#SBATCH --mem=240G
+#SBATCH --gres=gpu:1
+#SBATCH --mem=125G
 #SBATCH -o lact_asr_setup_train.log
-#SBATCH --constraint=h200
 
 # Complete setup and training script for LaCT ASR with LibriSpeech
 # This script downloads LibriSpeech and starts training in one go
-
-set -e
 
 # Load HPC modules
 ml load gcc/12.2
@@ -176,8 +173,8 @@ case $DATASET_SIZE in
 esac
 
 # Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SCRIPT_DIR="$(pwd)/scripts"
+PROJECT_DIR="$(pwd)"
 
 date
 echo "🚀 Starting LaCT ASR Setup and Training Pipeline"
