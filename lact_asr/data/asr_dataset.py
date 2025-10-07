@@ -335,10 +335,12 @@ class ASRDataCollator:
         pad_token_id: int = 0,
         max_audio_length: Optional[int] = None,
         max_text_length: Optional[int] = None,
+        hop_length: int = 160,  # For computing feature lengths from audio lengths
     ):
         self.pad_token_id = pad_token_id
         self.max_audio_length = max_audio_length
         self.max_text_length = max_text_length
+        self.hop_length = hop_length
     
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         # Extract components
@@ -391,9 +393,13 @@ class ASRDataCollator:
             padded_texts.append(text)
             actual_text_lengths.append(length)
         
+        # Convert audio lengths to feature lengths
+        # After mel-spectrogram extraction, length is reduced by hop_length factor
+        feature_lengths = [(length + self.hop_length - 1) // self.hop_length for length in actual_audio_lengths]
+        
         return {
             'audio_input': torch.stack(padded_audios),
-            'input_lengths': torch.tensor(actual_audio_lengths, dtype=torch.long),
+            'input_lengths': torch.tensor(feature_lengths, dtype=torch.long),
             'labels': torch.stack(padded_texts),
             'label_lengths': torch.tensor(actual_text_lengths, dtype=torch.long),
             'texts': [item['text'] for item in batch],  # Keep original texts
