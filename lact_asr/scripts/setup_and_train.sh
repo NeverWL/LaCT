@@ -208,19 +208,8 @@ if [[ "$SKIP_DOWNLOAD" == "false" ]]; then
     LIBRISPEECH_PATH="$DATA_DIR/LibriSpeech"
     if [[ -d "$LIBRISPEECH_PATH" && "$RESUME" == "false" ]]; then
         print_warning "Dataset already exists at $LIBRISPEECH_PATH"
-        if [[ -t 0 ]]; then
-            read -p "Re-download dataset? (y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                FORCE_DOWNLOAD="--force"
-            else
-                FORCE_DOWNLOAD=""
-                print_status "Using existing dataset"
-            fi
-        else
-            print_status "Non-interactive mode detected - using existing dataset"
-            FORCE_DOWNLOAD=""
-        fi
+        print_status "Using existing dataset (SLURM non-interactive mode)"
+        FORCE_DOWNLOAD=""
     else
         FORCE_DOWNLOAD=""
     fi

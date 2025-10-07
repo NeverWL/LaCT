@@ -212,17 +212,8 @@ print_status "Make sure you have sufficient disk space"
 print_status "Download method: HuggingFace datasets (works in restricted networks)"
 echo ""
 
-# Confirm before proceeding (skip if running non-interactively)
-if [[ -t 0 ]]; then
-    read -p "Proceed with download? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_status "Download cancelled"
-        exit 0
-    fi
-else
-    print_status "Non-interactive mode detected - proceeding with download automatically"
-fi
+# SLURM non-interactive mode - proceed automatically
+print_status "Proceeding with download automatically (SLURM mode)"
 
 # Check if dataset already exists
 LIBRISPEECH_PATH="$DATA_DIR/LibriSpeech"
@@ -240,17 +231,8 @@ if [[ -d "$LIBRISPEECH_PATH" && "$FORCE" != "true" ]]; then
     
     if [[ "$all_exist" == "true" ]]; then
         print_status "All requested subsets already exist"
-        if [[ -t 0 ]]; then
-            read -p "Re-download anyway? (y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                print_success "Using existing dataset"
-                exit 0
-            fi
-        else
-            print_status "Using existing dataset (non-interactive mode)"
-            exit 0
-        fi
+        print_status "Using existing dataset (SLURM non-interactive mode)"
+        exit 0
     else
         print_warning "Some subsets are missing, will download all requested subsets"
     fi
