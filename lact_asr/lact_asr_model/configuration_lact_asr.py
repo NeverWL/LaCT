@@ -63,10 +63,7 @@ class LaCTASRConfig(LaCTSWIGLUConfig):
         
         **kwargs,
     ):
-        # Set vocab_size to ctc_vocab_size for consistency
-        kwargs['vocab_size'] = ctc_vocab_size
-        
-        # Initialize parent class
+        # Initialize parent class with vocab_size set to ctc_vocab_size
         super().__init__(
             hidden_size=hidden_size,
             num_hidden_layers=num_hidden_layers,
