@@ -405,12 +405,16 @@ print_status "Estimated download size: ~${total_size_gb} GB"
 print_status "Make sure you have sufficient disk space and a stable internet connection"
 echo ""
 
-# Confirm before proceeding
-read -p "Proceed with download? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    print_status "Download cancelled"
-    exit 0
+# Confirm before proceeding (skip if running non-interactively)
+if [[ -t 0 ]]; then
+    read -p "Proceed with download? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Download cancelled"
+        exit 0
+    fi
+else
+    print_status "Non-interactive mode detected - proceeding with download automatically"
 fi
 
 # Start download process
