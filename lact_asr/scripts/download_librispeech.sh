@@ -1,7 +1,8 @@
 #!/bin/bash
 #
 # LibriSpeech Dataset Download Script for LaCT ASR
-# This script downloads LibriSpeech dataset in the format expected by the training pipeline
+# This script downloads LibriSpeech dataset using HuggingFace datasets
+# (Works in HPC environments where openslr.org may be blocked)
 #
 
 set -e  # Exit on any error
@@ -9,7 +10,6 @@ set -e  # Exit on any error
 # Default configuration
 DEFAULT_DATA_DIR="/tmp/LibriSpeech"
 DEFAULT_SUBSETS="train-clean-100 dev-clean"
-BASE_URL="http://www.openslr.org/resources/12"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -40,16 +40,17 @@ show_usage() {
     cat << EOF
 Usage: $0 [options]
 
-Downloads LibriSpeech dataset for LaCT ASR training.
+Downloads LibriSpeech dataset for LaCT ASR training using HuggingFace datasets.
+This method works in HPC environments where direct HTTP access may be blocked.
 
 Options:
   -d, --data-dir DIR          Directory to download LibriSpeech (default: $DEFAULT_DATA_DIR)
   -s, --subsets LIST          Space-separated list of subsets to download (default: "$DEFAULT_SUBSETS")
-  -k, --keep-archives         Keep downloaded tar.gz files after extraction
   -f, --force                 Force re-download even if files exist
   --train-only               Download only training data (train-clean-100)
   --full                     Download full dataset (train-clean-100, train-clean-360, dev-clean, test-clean)
   --minimal                  Download minimal dataset (train-clean-100, dev-clean) - same as default
+  --no-validate              Skip validation after download
   -h, --help                 Show this help message
 
 Available subsets:
@@ -87,253 +88,11 @@ is_valid_subset() {
     return 1
 }
 
-# Function to get file size from URL
-get_remote_file_size() {
-    local url=$1
-    curl -sI "$url" | grep -i content-length | awk '{print $2}' | tr -d '\r'
-}
-
-# Function to format bytes
-format_bytes() {
-    local bytes=$1
-    if [[ $bytes -gt 1073741824 ]]; then
-        echo "$(( bytes / 1073741824 )) GB"
-    elif [[ $bytes -gt 1048576 ]]; then
-        echo "$(( bytes / 1048576 )) MB"
-    elif [[ $bytes -gt 1024 ]]; then
-        echo "$(( bytes / 1024 )) KB"
-    else
-        echo "$bytes bytes"
-    fi
-}
-
-# Function to download and extract a subset
-download_subset() {
-    local subset=$1
-    local data_dir=$2
-    local keep_archives=$3
-    local force=$4
-    
-    local archive_name="${subset}.tar.gz"
-    local archive_path="${data_dir}/${archive_name}"
-    local extract_path="${data_dir}/LibriSpeech/${subset}"
-    local download_url="${BASE_URL}/${archive_name}"
-    
-    print_status "Processing subset: $subset"
-    
-    # Check if already extracted and not forcing
-    if [[ -d "$extract_path" && "$force" != "true" ]]; then
-        print_warning "Subset $subset already exists at $extract_path (use --force to re-download)"
-        return 0
-    fi
-    
-    # Create data directory
-    mkdir -p "$data_dir"
-    
-    # Check if archive exists and is complete
-    local should_download=true
-    if [[ -f "$archive_path" && "$force" != "true" ]]; then
-        print_status "Archive $archive_name already exists, checking integrity..."
-        
-        # Get remote and local file sizes
-        local remote_size=$(get_remote_file_size "$download_url")
-        local local_size=$(stat -f%z "$archive_path" 2>/dev/null || stat -c%s "$archive_path" 2>/dev/null)
-        
-        if [[ -n "$remote_size" && "$local_size" -eq "$remote_size" ]]; then
-            print_success "Archive $archive_name is complete ($(format_bytes $local_size))"
-            should_download=false
-        else
-            print_warning "Archive $archive_name is incomplete or corrupted, will re-download"
-            rm -f "$archive_path"
-        fi
-    fi
-    
-    # Download if needed
-    if [[ "$should_download" == "true" ]]; then
-        print_status "Downloading $subset from $download_url"
-        
-        # Get file size for progress
-        local file_size=$(get_remote_file_size "$download_url")
-        if [[ -n "$file_size" ]]; then
-            print_status "File size: $(format_bytes $file_size)"
-        fi
-        
-        # Download with progress bar and better timeout handling
-        if command -v wget >/dev/null 2>&1; then
-            # Use wget with reasonable timeouts and retries
-            wget --progress=bar:force:noscroll \
-                 --timeout=30 \
-                 --tries=5 \
-                 --wait=10 \
-                 --retry-connrefused \
-                 --continue \
-                 -O "$archive_path" "$download_url"
-        elif command -v curl >/dev/null 2>&1; then
-            # Use curl with timeouts and retries
-            curl -L --progress-bar \
-                 --connect-timeout 30 \
-                 --max-time 3600 \
-                 --retry 5 \
-                 --retry-delay 10 \
-                 --retry-max-time 7200 \
-                 --continue-at - \
-                 -o "$archive_path" "$download_url"
-        else
-            print_error "Neither wget nor curl found. Please install one of them."
-            return 1
-        fi
-        
-        if [[ $? -ne 0 ]]; then
-            print_error "Failed to download $subset"
-            print_error "This may be due to:"
-            print_error "  - Network connectivity issues"
-            print_error "  - Firewall blocking outbound connections"
-            print_error "  - openslr.org being unavailable"
-            print_error ""
-            print_error "Alternative solutions:"
-            print_error "  1. Download manually from: $download_url"
-            print_error "  2. Use HuggingFace datasets (see README)"
-            print_error "  3. Contact your HPC admin about network access"
-            rm -f "$archive_path"
-            return 1
-        fi
-        
-        print_success "Downloaded $archive_name"
-    fi
-    
-    # Extract archive
-    print_status "Extracting $archive_name..."
-    
-    # Remove existing extraction if forcing
-    if [[ "$force" == "true" && -d "$extract_path" ]]; then
-        rm -rf "$extract_path"
-    fi
-    
-    # Extract with progress
-    if command -v pv >/dev/null 2>&1; then
-        pv "$archive_path" | tar -xzf - -C "$data_dir"
-    else
-        tar -xzf "$archive_path" -C "$data_dir"
-    fi
-    
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to extract $archive_name"
-        return 1
-    fi
-    
-    print_success "Extracted $subset to $extract_path"
-    
-    # Remove archive if not keeping
-    if [[ "$keep_archives" != "true" ]]; then
-        rm -f "$archive_path"
-        print_status "Removed archive $archive_name"
-    fi
-    
-    return 0
-}
-
-# Function to verify dataset structure
-verify_dataset() {
-    local data_dir=$1
-    local subsets=$2
-    
-    print_status "Verifying dataset structure..."
-    
-    local librispeech_dir="${data_dir}/LibriSpeech"
-    if [[ ! -d "$librispeech_dir" ]]; then
-        print_error "LibriSpeech directory not found at $librispeech_dir"
-        return 1
-    fi
-    
-    local total_files=0
-    local total_hours=0
-    
-    for subset in $subsets; do
-        local subset_dir="${librispeech_dir}/${subset}"
-        if [[ ! -d "$subset_dir" ]]; then
-            print_warning "Subset directory not found: $subset_dir"
-            continue
-        fi
-        
-        # Count audio files
-        local audio_count=$(find "$subset_dir" -name "*.flac" | wc -l | tr -d ' ')
-        local transcript_count=$(find "$subset_dir" -name "*.trans.txt" | wc -l | tr -d ' ')
-        
-        print_success "Subset $subset: $audio_count audio files, $transcript_count transcript files"
-        total_files=$((total_files + audio_count))
-        
-        # Estimate hours based on subset name
-        case $subset in
-            *100*) total_hours=$((total_hours + 100)) ;;
-            *360*) total_hours=$((total_hours + 360)) ;;
-            *500*) total_hours=$((total_hours + 500)) ;;
-            *clean*|*other*) total_hours=$((total_hours + 5)) ;;  # Dev/test sets are ~5 hours each
-        esac
-    done
-    
-    print_success "Total: $total_files audio files, approximately $total_hours hours of speech"
-    
-    # Check for common issues
-    local sample_audio=$(find "$librispeech_dir" -name "*.flac" | head -1)
-    if [[ -n "$sample_audio" ]]; then
-        if command -v soxi >/dev/null 2>&1; then
-            local sample_info=$(soxi "$sample_audio" 2>/dev/null)
-            if [[ $? -eq 0 ]]; then
-                print_success "Audio files appear to be valid FLAC format"
-            else
-                print_warning "Sample audio file may be corrupted: $sample_audio"
-            fi
-        fi
-    fi
-    
-    return 0
-}
-
-# Function to create a simple test script
-create_test_script() {
-    local data_dir=$1
-    local script_path="${data_dir}/test_librispeech.sh"
-    
-    cat > "$script_path" << 'EOF'
-#!/bin/bash
-# Quick test script for LibriSpeech dataset
-
-LIBRISPEECH_DIR="$1"
-if [[ -z "$LIBRISPEECH_DIR" ]]; then
-    LIBRISPEECH_DIR="$(dirname "$0")/LibriSpeech"
-fi
-
-echo "Testing LibriSpeech dataset at: $LIBRISPEECH_DIR"
-
-if [[ ! -d "$LIBRISPEECH_DIR" ]]; then
-    echo "Error: LibriSpeech directory not found"
-    exit 1
-fi
-
-echo "Available subsets:"
-ls -1 "$LIBRISPEECH_DIR"
-
-echo ""
-echo "Sample files from train-clean-100:"
-find "$LIBRISPEECH_DIR/train-clean-100" -name "*.flac" | head -3
-
-echo ""
-echo "Sample transcript:"
-find "$LIBRISPEECH_DIR/train-clean-100" -name "*.trans.txt" | head -1 | xargs head -3
-
-echo ""
-echo "Dataset appears ready for training!"
-EOF
-    
-    chmod +x "$script_path"
-    print_success "Created test script: $script_path"
-}
-
 # Parse command line arguments
 DATA_DIR="$DEFAULT_DATA_DIR"
 SUBSETS="$DEFAULT_SUBSETS"
-KEEP_ARCHIVES=false
 FORCE=false
+NO_VALIDATE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -346,7 +105,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -k|--keep-archives)
-            KEEP_ARCHIVES=true
+            # Ignored for HF download (no archives)
             shift
             ;;
         -f|--force)
@@ -363,6 +122,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --minimal)
             SUBSETS="train-clean-100 dev-clean"
+            shift
+            ;;
+        --no-validate)
+            NO_VALIDATE=true
             shift
             ;;
         -h|--help)
@@ -386,17 +149,36 @@ for subset in $SUBSETS; do
     fi
 done
 
-# Check dependencies
+# Check Python dependencies
+print_status "Checking Python dependencies..."
 missing_deps=()
-if ! command -v tar >/dev/null 2>&1; then
-    missing_deps+=("tar")
-fi
-if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
-    missing_deps+=("wget or curl")
-fi
+
+for dep in datasets soundfile tqdm numpy; do
+    if ! python -c "import $dep" 2>/dev/null; then
+        missing_deps+=("$dep")
+    fi
+done
 
 if [[ ${#missing_deps[@]} -gt 0 ]]; then
-    print_error "Missing required dependencies: ${missing_deps[*]}"
+    print_error "Missing required Python packages: ${missing_deps[*]}"
+    print_status "Installing missing dependencies..."
+    pip install datasets soundfile tqdm numpy
+    
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to install dependencies"
+        exit 1
+    fi
+fi
+
+print_success "All dependencies available"
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_SCRIPT="$SCRIPT_DIR/download_librispeech_hf.py"
+
+# Check if Python script exists
+if [[ ! -f "$PYTHON_SCRIPT" ]]; then
+    print_error "Python download script not found: $PYTHON_SCRIPT"
     exit 1
 fi
 
@@ -406,12 +188,12 @@ echo "LibriSpeech Download Configuration"
 echo "=================================================="
 echo "Data directory: $DATA_DIR"
 echo "Subsets to download: $SUBSETS"
-echo "Keep archives: $KEEP_ARCHIVES"
 echo "Force re-download: $FORCE"
+echo "Skip validation: $NO_VALIDATE"
 echo "=================================================="
 echo ""
 
-# Estimate total download size
+# Estimate download size
 total_size_gb=0
 for subset in $SUBSETS; do
     case $subset in
@@ -426,7 +208,8 @@ for subset in $SUBSETS; do
 done
 
 print_status "Estimated download size: ~${total_size_gb} GB"
-print_status "Make sure you have sufficient disk space and a stable internet connection"
+print_status "Make sure you have sufficient disk space"
+print_status "Download method: HuggingFace datasets (works in restricted networks)"
 echo ""
 
 # Confirm before proceeding (skip if running non-interactively)
@@ -441,32 +224,52 @@ else
     print_status "Non-interactive mode detected - proceeding with download automatically"
 fi
 
+# Check if dataset already exists
+LIBRISPEECH_PATH="$DATA_DIR/LibriSpeech"
+if [[ -d "$LIBRISPEECH_PATH" && "$FORCE" != "true" ]]; then
+    print_warning "Dataset already exists at $LIBRISPEECH_PATH"
+    
+    # Check if all requested subsets exist
+    all_exist=true
+    for subset in $SUBSETS; do
+        if [[ ! -d "$LIBRISPEECH_PATH/$subset" ]]; then
+            all_exist=false
+            break
+        fi
+    done
+    
+    if [[ "$all_exist" == "true" ]]; then
+        print_status "All requested subsets already exist"
+        if [[ -t 0 ]]; then
+            read -p "Re-download anyway? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_success "Using existing dataset"
+                exit 0
+            fi
+        else
+            print_status "Using existing dataset (non-interactive mode)"
+            exit 0
+        fi
+    else
+        print_warning "Some subsets are missing, will download all requested subsets"
+    fi
+fi
+
 # Start download process
-print_status "Starting LibriSpeech download..."
+print_status "Starting LibriSpeech download via HuggingFace..."
 start_time=$(date +%s)
 
-# Download each subset
-failed_subsets=()
-for subset in $SUBSETS; do
-    if ! download_subset "$subset" "$DATA_DIR" "$KEEP_ARCHIVES" "$FORCE"; then
-        failed_subsets+=("$subset")
-    fi
-done
-
-# Check for failures
-if [[ ${#failed_subsets[@]} -gt 0 ]]; then
-    print_error "Failed to download subsets: ${failed_subsets[*]}"
-    exit 1
+# Build Python command
+PYTHON_CMD="python $PYTHON_SCRIPT --data-dir $DATA_DIR --subsets $SUBSETS"
+if [[ "$NO_VALIDATE" == "true" ]]; then
+    PYTHON_CMD="$PYTHON_CMD --no-validate"
 fi
 
-# Verify dataset
-if ! verify_dataset "$DATA_DIR" "$SUBSETS"; then
-    print_error "Dataset verification failed"
-    exit 1
-fi
+# Execute Python download script
+eval $PYTHON_CMD
 
-# Create test script
-create_test_script "$DATA_DIR"
+exit_code=$?
 
 # Calculate total time
 end_time=$(date +%s)
@@ -475,26 +278,24 @@ hours=$((total_time / 3600))
 minutes=$(((total_time % 3600) / 60))
 seconds=$((total_time % 60))
 
-echo ""
-echo "=================================================="
-print_success "LibriSpeech download completed successfully!"
-echo "=================================================="
-print_success "Downloaded to: $DATA_DIR/LibriSpeech"
-print_success "Time taken: ${hours}h ${minutes}m ${seconds}s"
-print_success "Subsets downloaded: $SUBSETS"
-echo ""
-print_status "Next steps:"
-echo "  1. Test the dataset:"
-echo "     $DATA_DIR/test_librispeech.sh"
-echo ""
-echo "  2. Start training:"
-echo "     cd $(dirname "$0")/.."
-echo "     ./examples/train_librispeech.sh --data-dir $DATA_DIR/LibriSpeech"
-echo ""
-echo "  3. Or use custom training parameters:"
-echo "     ./examples/train_librispeech.sh \\"
-echo "       --data-dir $DATA_DIR/LibriSpeech \\"
-echo "       --batch-size 16 \\"
-echo "       --epochs 30 \\"
-echo "       --train-subset train-clean-360"
-echo "=================================================="
+if [[ $exit_code -eq 0 ]]; then
+    echo ""
+    echo "=================================================="
+    print_success "LibriSpeech download completed successfully!"
+    echo "=================================================="
+    print_success "Downloaded to: $LIBRISPEECH_PATH"
+    print_success "Time taken: ${hours}h ${minutes}m ${seconds}s"
+    print_success "Subsets downloaded: $SUBSETS"
+    echo ""
+    print_status "Next steps:"
+    echo "  1. Start training:"
+    echo "     cd $(dirname "$SCRIPT_DIR")"
+    echo "     ./examples/train_librispeech.sh --data-dir $LIBRISPEECH_PATH"
+    echo ""
+    echo "  2. Or use the setup script (will skip download):"
+    echo "     ./scripts/setup_and_train.sh --skip-download --data-dir $(dirname $LIBRISPEECH_PATH)"
+    echo "=================================================="
+else
+    print_error "Download failed with exit code $exit_code"
+    exit $exit_code
+fi
