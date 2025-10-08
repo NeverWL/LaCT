@@ -218,6 +218,27 @@ class ASRTrainer:
     
     def _training_step(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Perform a single training step."""
+        # Comprehensive input validation
+        if torch.isnan(batch['audio_input']).any() or torch.isinf(batch['audio_input']).any():
+            logger.error("NaN or Inf detected in audio_input! Skipping batch.")
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
+        # Check for invalid CTC inputs
+        if (batch['input_lengths'] <= 0).any():
+            logger.error(f"Invalid input_lengths detected: {batch['input_lengths']}")
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
+        if (batch['label_lengths'] <= 0).any():
+            logger.error(f"Invalid label_lengths detected: {batch['label_lengths']}")
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
+        # CTC requires input_length >= label_length
+        if (batch['input_lengths'] < batch['label_lengths']).any():
+            logger.error(f"CTC constraint violated: input_lengths < label_lengths")
+            logger.error(f"  input_lengths: {batch['input_lengths']}")
+            logger.error(f"  label_lengths: {batch['label_lengths']}")
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
         if self.mixed_precision:
             with torch.cuda.amp.autocast():
                 outputs = self.model(
@@ -235,6 +256,24 @@ class ASRTrainer:
                 input_lengths=batch['input_lengths']
             )
             loss = outputs.loss
+        
+        # Check for NaN/Inf in loss
+        if torch.isnan(loss) or torch.isinf(loss):
+            logger.error(f"NaN or Inf loss detected at step {self.global_step}!")
+            logger.error(f"  Input lengths: {batch['input_lengths']}")
+            logger.error(f"  Label lengths: {batch['label_lengths']}")
+            logger.error(f"  Audio input shape: {batch['audio_input'].shape}")
+            logger.error(f"  Audio input stats - min: {batch['audio_input'].min():.4f}, "
+                        f"max: {batch['audio_input'].max():.4f}, "
+                        f"mean: {batch['audio_input'].mean():.4f}")
+            
+            # Check model parameters for NaN
+            for name, param in self.model.named_parameters():
+                if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                    logger.error(f"  NaN/Inf gradient in parameter: {name}")
+            
+            # Return zero loss to skip this batch
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
         
         return loss
     
