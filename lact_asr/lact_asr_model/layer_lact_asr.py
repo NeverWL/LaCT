@@ -332,7 +332,7 @@ class LaCTASRLayer(nn.Module):
 
         # Use Flash Attention if available, otherwise fallback to standard attention
         if FLASH_ATTN_AVAILABLE:
-            # Contains at least one padding token in the sequence
+            # !!!S Contains at least one padding token in the sequence
             if attention_mask is not None:
                 q, k, v, indices_q, cu_seq_lens, max_seq_lens = self._upad_input(q, k, v, attention_mask, q_len)
                 cu_seqlens_q, cu_seqlens_k = cu_seq_lens
@@ -363,6 +363,7 @@ class LaCTASRLayer(nn.Module):
                     causal=True,
                     window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
                 )
+            # !!!E
         else:
             # Fallback to standard PyTorch attention
             # Reshape for standard attention: (batch, num_heads, seq_len, head_dim)
@@ -400,7 +401,7 @@ class LaCTASRLayer(nn.Module):
         
         o = o.reshape(batch_size, q_len, -1)
 
-        ##### TTT starts here. 
+        ##### !!!S TTT starts here. 
         # Split heads then merge it to batch dimension
         fast_q = rearrange(fast_q, 'b s (n_h d) -> (b n_h) s d', n_h=self.num_fw_heads)
         fast_k = rearrange(fast_k, 'b s (n_h d) -> (b n_h) s d', n_h=self.num_fw_heads)
@@ -484,7 +485,7 @@ class LaCTASRLayer(nn.Module):
 
         ttt_x_normed = rearrange(ttt_x_normed, '(b n_h) s d -> b s (n_h d)', n_h=self.num_fw_heads)
 
-        # If we applied temporal downsampling, we need to upsample back
+        # !!!E If we applied temporal downsampling, we need to upsample back
         if self.audio_adapt and self.temporal_reduction > 1:
             # Simple upsampling - repeat each frame
             ttt_x_normed = ttt_x_normed.repeat_interleave(self.temporal_reduction, dim=1)
@@ -494,6 +495,8 @@ class LaCTASRLayer(nn.Module):
             # Also upsample attention output
             o = o.repeat_interleave(self.temporal_reduction, dim=1)
             o = o[:, :hidden_states.size(1), :]
+
+        # !!!S
 
         o = o + ttt_x_normed
         o = self.o_proj(o)
