@@ -610,11 +610,63 @@ def main():
     
     logger.info(f"Using device: {args.device}")
     
-    # Create model and config
+    # First, create a temporary dataset to get vocab size
+    logger.info("Loading dataset to determine vocabulary size...")
+    if args.dataset_type == "librispeech":
+        temp_dataset = LibriSpeechDataset(
+            root_dir=args.data_dir,
+            subset=args.train_subset or "train-clean-100",
+            sample_rate=16000,
+            max_duration=args.max_audio_duration,
+            normalize_text=True,
+        )
+    elif args.dataset_type == "commonvoice":
+        temp_dataset = CommonVoiceDataset(
+            root_dir=args.data_dir,
+            split="train",
+            language=args.language or "en",
+            sample_rate=16000,
+            max_duration=args.max_audio_duration,
+            normalize_text=True,
+        )
+    else:
+        temp_dataset = ASRDataset(
+            manifest_path=args.train_manifest,
+            vocab_path=args.vocab_path,
+            sample_rate=16000,
+            max_duration=args.max_audio_duration,
+            normalize_text=True,
+        )
+    
+    # Get actual vocab size from dataset
+    actual_vocab_size = len(temp_dataset.vocab)
+    logger.info(f"Dataset vocabulary size: {actual_vocab_size}")
+    logger.info(f"Vocabulary: {temp_dataset.vocab}")
+    
+    # Override vocab_size argument with actual vocab size
+    if not args.vocab_size:
+        args.vocab_size = actual_vocab_size
+        logger.info(f"Setting vocab_size to {actual_vocab_size}")
+    elif args.vocab_size != actual_vocab_size:
+        logger.warning(f"Vocab size mismatch: args={args.vocab_size}, dataset={actual_vocab_size}")
+        logger.warning(f"Using dataset vocab size: {actual_vocab_size}")
+        args.vocab_size = actual_vocab_size
+    
+    # Create model and config with correct vocab size
     config, model = create_model_and_config(args)
     
-    # Create datasets and dataloaders
+    # Create datasets and dataloaders (will reuse the vocab from temp_dataset)
     train_dataloader, val_dataloader = create_datasets_and_dataloaders(args, config)
+    
+    # Verify vocab size matches
+    logger.info(f"Model CTC head vocab size: {model.ctc_head.out_features}")
+    logger.info(f"Config vocab size: {config.ctc_vocab_size}")
+    
+    if model.ctc_head.out_features != actual_vocab_size:
+        logger.error(f"CRITICAL: Vocab size mismatch!")
+        logger.error(f"  Model CTC head: {model.ctc_head.out_features}")
+        logger.error(f"  Dataset vocab: {actual_vocab_size}")
+        raise ValueError(f"Vocab size mismatch: model has {model.ctc_head.out_features}, dataset has {actual_vocab_size}")
     
     # Create optimizer
     optimizer = AdamW(
