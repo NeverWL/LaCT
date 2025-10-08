@@ -343,12 +343,62 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         
         print(f"\n✅ Model works correctly with real data in eval mode!")
         
-        # Now test in TRAINING mode with mixed precision
+        # Now test in TRAINING mode WITHOUT mixed precision first
         print(f"\n" + "=" * 60)
-        print("Testing in TRAINING MODE with Mixed Precision")
+        print("Testing in TRAINING MODE (FP32, no mixed precision)")
         print("=" * 60)
         
         model.train()  # Switch to training mode
+        
+        print(f"\nPerforming forward pass in training mode (FP32)...")
+        
+        # Test WITHOUT mixed precision first
+        outputs_train_fp32 = model.model(
+            audio_input=batch['audio_input']
+        )
+        
+        hidden_states_train_fp32 = outputs_train_fp32[0]
+        
+        print(f"✓ Training mode forward pass completed (FP32)")
+        print(f"  Hidden states shape: {hidden_states_train_fp32.shape}")
+        print(f"  Hidden states range: [{hidden_states_train_fp32.min():.4f}, {hidden_states_train_fp32.max():.4f}]")
+        
+        if torch.isnan(hidden_states_train_fp32).any():
+            print(f"\n❌ Hidden states contain NaN in training mode (even without mixed precision)!")
+            print(f"   The issue is in training mode itself, not mixed precision")
+            print(f"\nLikely causes:")
+            print(f"  - Dropout causing instability")
+            print(f"  - BatchNorm in training mode")
+            print(f"  - TTT layer numerical issues")
+            
+            # Test with dropout disabled
+            print(f"\nTesting with dropout disabled...")
+            model.eval()  # This disables dropout
+            
+            # But manually enable BatchNorm training mode
+            for module in model.modules():
+                if isinstance(module, torch.nn.BatchNorm1d):
+                    module.train()
+            
+            outputs_no_dropout = model.model(audio_input=batch['audio_input'])
+            hidden_no_dropout = outputs_no_dropout[0]
+            
+            if torch.isnan(hidden_no_dropout).any():
+                print(f"  ❌ Still NaN with dropout disabled - issue is in BatchNorm or core layers")
+            else:
+                print(f"  ✓ Works without dropout - Dropout is causing NaN!")
+                print(f"     Hidden states range: [{hidden_no_dropout.min():.4f}, {hidden_no_dropout.max():.4f}]")
+            
+            return False
+        
+        print(f"✓ Training mode works in FP32!")
+        
+        # Now test with mixed precision
+        print(f"\n" + "=" * 60)
+        print("Testing in TRAINING MODE with Mixed Precision (FP16)")
+        print("=" * 60)
+        
+        model.train()
         
         print(f"\nPerforming forward pass in training mode with AMP...")
         
@@ -360,13 +410,14 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         
         hidden_states_train = outputs_train[0]
         
-        print(f"✓ Training mode forward pass completed")
+        print(f"✓ Training mode forward pass completed (FP16)")
         print(f"  Hidden states shape: {hidden_states_train.shape}")
         print(f"  Hidden states range: [{hidden_states_train.min():.4f}, {hidden_states_train.max():.4f}]")
         
         if torch.isnan(hidden_states_train).any():
-            print(f"\n❌ Hidden states contain NaN in training mode!")
-            print(f"   Training mode + mixed precision causes NaN")
+            print(f"\n❌ Hidden states contain NaN with mixed precision!")
+            print(f"   Mixed precision (FP16) causes NaN")
+            print(f"   FP32 works fine, so use training without --mixed_precision flag")
             return False
         
         # Apply CTC head
