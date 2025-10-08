@@ -341,11 +341,142 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
             print(f"\n❌ Loss is Inf!")
             return False
         
-        print(f"\n✅ Model works correctly with real data!")
-        print(f"\nThis suggests the NaN issue occurs during:")
-        print(f"  - Training dynamics (gradient updates)")
-        print(f"  - Mixed precision training")
-        print(f"  - Specific batches with unusual properties")
+        print(f"\n✅ Model works correctly with real data in eval mode!")
+        
+        # Now test in TRAINING mode with mixed precision
+        print(f"\n" + "=" * 60)
+        print("Testing in TRAINING MODE with Mixed Precision")
+        print("=" * 60)
+        
+        model.train()  # Switch to training mode
+        
+        print(f"\nPerforming forward pass in training mode with AMP...")
+        
+        # Use mixed precision like actual training
+        with torch.cuda.amp.autocast():
+            outputs_train = model.model(
+                audio_input=batch['audio_input']
+            )
+        
+        hidden_states_train = outputs_train[0]
+        
+        print(f"✓ Training mode forward pass completed")
+        print(f"  Hidden states shape: {hidden_states_train.shape}")
+        print(f"  Hidden states range: [{hidden_states_train.min():.4f}, {hidden_states_train.max():.4f}]")
+        
+        if torch.isnan(hidden_states_train).any():
+            print(f"\n❌ Hidden states contain NaN in training mode!")
+            print(f"   Training mode + mixed precision causes NaN")
+            return False
+        
+        # Apply CTC head
+        logits_train = model.ctc_head(hidden_states_train)
+        
+        print(f"✓ CTC head applied in training mode")
+        print(f"  Logits range: [{logits_train.min():.4f}, {logits_train.max():.4f}]")
+        
+        if torch.isnan(logits_train).any():
+            print(f"\n❌ Logits contain NaN in training mode!")
+            return False
+        
+        # Compute loss with mixed precision
+        log_probs_train = torch.log_softmax(logits_train, dim=-1)
+        log_probs_transposed_train = log_probs_train.transpose(0, 1)
+        
+        ctc_loss_fn = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True)
+        loss_train = ctc_loss_fn(
+            log_probs_transposed_train,
+            labels,
+            input_lengths,
+            label_lengths
+        )
+        
+        print(f"✓ CTC loss computed in training mode")
+        print(f"  Loss value: {loss_train.item():.4f}")
+        
+        if torch.isnan(loss_train):
+            print(f"\n❌ Loss is NaN in training mode with mixed precision!")
+            print(f"   This confirms mixed precision is causing the issue")
+            return False
+        
+        # Test backward pass
+        print(f"\nTesting backward pass...")
+        loss_train.backward()
+        
+        print(f"✓ Backward pass completed")
+        
+        # Check gradients for NaN
+        nan_grads = []
+        for name, param in model.named_parameters():
+            if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                nan_grads.append(name)
+        
+        if nan_grads:
+            print(f"\n❌ Found NaN/Inf in gradients:")
+            for name in nan_grads[:10]:
+                print(f"     - {name}")
+            return False
+        
+        print(f"✓ No NaN/Inf in gradients")
+        
+        print(f"\n✅ First batch works in training mode with mixed precision!")
+        
+        # Test multiple batches to find problematic ones
+        print(f"\n" + "=" * 60)
+        print("Testing Multiple Random Batches")
+        print("=" * 60)
+        
+        # Create a shuffled dataloader like training
+        dataloader_shuffled = DataLoader(
+            dataset,
+            batch_size=8,  # Same as training
+            shuffle=True,
+            collate_fn=collator,
+            num_workers=0
+        )
+        
+        print(f"\nTesting 10 random batches...")
+        model.train()
+        
+        for batch_idx, test_batch in enumerate(dataloader_shuffled):
+            if batch_idx >= 10:
+                break
+            
+            # Move to device
+            test_batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
+                         for k, v in test_batch.items()}
+            
+            # Quick forward pass
+            try:
+                with torch.cuda.amp.autocast():
+                    test_outputs = model(
+                        audio_input=test_batch['audio_input'],
+                        labels=test_batch['labels'],
+                        input_lengths=test_batch['input_lengths'],
+                        label_lengths=test_batch['label_lengths']
+                    )
+                
+                if torch.isnan(test_outputs.loss) or torch.isnan(test_outputs.logits).any():
+                    print(f"\n❌ Batch {batch_idx} produces NaN!")
+                    print(f"   Audio shape: {test_batch['audio_input'].shape}")
+                    print(f"   Input lengths: {test_batch['input_lengths'].tolist()}")
+                    print(f"   Label lengths: {test_batch['label_lengths'].tolist()}")
+                    print(f"   Labels min/max: [{test_batch['labels'].min()}, {test_batch['labels'].max()}]")
+                    return False
+                else:
+                    print(f"  ✓ Batch {batch_idx}: Loss={test_outputs.loss.item():.4f}, "
+                          f"Logits range=[{test_outputs.logits.min():.4f}, {test_outputs.logits.max():.4f}]")
+            
+            except Exception as e:
+                print(f"\n❌ Batch {batch_idx} failed: {e}")
+                return False
+        
+        print(f"\n✅ All 10 random batches processed successfully!")
+        print(f"\nIf training still gets NaN, the issue is likely:")
+        print(f"  - Accumulation of numerical errors over many steps")
+        print(f"  - Optimizer updates causing parameter corruption")
+        print(f"  - Learning rate schedule causing instability after warmup")
+        print(f"  - GradScaler state issues in mixed precision")
         
         return True
         
