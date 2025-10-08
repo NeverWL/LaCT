@@ -297,16 +297,20 @@ class ASRTrainer:
                         f"max: {batch['audio_input'].max():.4f}, "
                         f"mean: {batch['audio_input'].mean():.4f}")
             
-            # Log which parameters have NaN (but don't iterate if no gradients yet)
+            # Check if model weights have NaN
+            for name, param in self.model.named_parameters():
+                if torch.isnan(param).any() or torch.isinf(param).any():
+                    logger.error(f"  NaN/Inf in model parameter: {name}")
+            
+            # Log which parameters have NaN gradients (but don't iterate if no gradients yet)
             if self.global_step > 0:
                 for name, param in self.model.named_parameters():
                     if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
                         logger.error(f"  NaN/Inf gradient in parameter: {name}")
             
-            # Replace NaN loss with a large but finite value to allow training to continue
-            # This is better than returning zero which breaks the GradScaler
-            logger.warning(f"Replacing NaN loss with 1e6 to continue training")
-            loss = torch.tensor(1e6, device=self.device, requires_grad=True)
+            # Return None to skip this batch
+            logger.warning(f"Skipping batch due to NaN/Inf loss")
+            return None
         
         return loss
     
