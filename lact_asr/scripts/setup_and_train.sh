@@ -133,7 +133,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --mixed-precision)
-            MIXED_PRECISION=true
+            MIXED_PRECISION=false
             shift
             ;;
         --resume)
