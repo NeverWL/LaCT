@@ -92,7 +92,7 @@ class ASRTrainer:
         if optimizer is None:
             self.optimizer = AdamW(
                 self.model.parameters(),
-                lr=5e-4,
+                lr=5e-6,
                 betas=(0.9, 0.98),
                 eps=1e-6,
                 weight_decay=0.01
@@ -581,7 +581,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--max_epochs", type=int, default=10, help="Maximum number of epochs")
     parser.add_argument("--max_steps", type=int, help="Maximum number of training steps")
-    parser.add_argument("--learning_rate", type=float, default=5e-4, help="Learning rate")
+    parser.add_argument("--learning_rate", type=float, default=5e-6, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="Maximum gradient norm for clipping")
