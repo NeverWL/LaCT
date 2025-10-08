@@ -72,7 +72,7 @@ Options:
   -b, --batch-size SIZE      Training batch size (default: 8)
   -e, --epochs NUM           Maximum training epochs (default: 20)
   -l, --learning-rate RATE   Learning rate (default: 5e-6)
-  --mixed-precision          Enable mixed precision training (default: enabled)
+  --mixed-precision          Enable mixed precision training (default: disabled due to NaN issues)
   --resume                   Resume from existing checkpoint if available
   -h, --help                 Show this help message
 
@@ -95,7 +95,7 @@ DOWNLOAD_ONLY=false
 BATCH_SIZE=8
 MAX_EPOCHS=20
 LEARNING_RATE="5e-6"
-MIXED_PRECISION=true
+MIXED_PRECISION=false
 RESUME=false
 
 while [[ $# -gt 0 ]]; do
@@ -132,8 +132,8 @@ while [[ $# -gt 0 ]]; do
             LEARNING_RATE="$2"
             shift 2
             ;;
-        --no-mixed-precision)
-            MIXED_PRECISION=false
+        --mixed-precision)
+            MIXED_PRECISION=true
             shift
             ;;
         --resume)
@@ -293,10 +293,9 @@ TRAIN_CMD="$TRAIN_CMD --batch-size $BATCH_SIZE"
 TRAIN_CMD="$TRAIN_CMD --epochs $MAX_EPOCHS"
 TRAIN_CMD="$TRAIN_CMD --learning-rate $LEARNING_RATE"
 
-if [[ "$MIXED_PRECISION" == "false" ]]; then
-    # Note: The training script enables mixed precision by default
-    # We'd need to modify it to support disabling it
-    print_warning "Mixed precision disabling not implemented in training script"
+if [[ "$MIXED_PRECISION" == "true" ]]; then
+    TRAIN_CMD="$TRAIN_CMD --mixed_precision"
+    print_warning "Mixed precision enabled - may cause NaN issues"
 fi
 
 echo "🎯 Training command:"

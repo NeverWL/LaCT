@@ -591,7 +591,8 @@ def main():
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="Maximum gradient norm for clipping")
-    parser.add_argument("--mixed_precision", action="store_true", help="Use mixed precision training")
+    parser.add_argument("--mixed_precision", action="store_true", 
+                        help="Use mixed precision training (WARNING: May cause NaN, disabled by default)")
     
     # Logging and checkpointing
     parser.add_argument("--logging_steps", type=int, default=100, help="Log every N steps")
