@@ -154,6 +154,17 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         
         print(f"✓ Dataset loaded: {len(dataset)} samples")
         print(f"  Vocabulary size: {len(dataset.vocab)}")
+        print(f"  Vocabulary: {dataset.vocab}")
+        print(f"\n  Character mapping:")
+        for idx, char in enumerate(dataset.vocab[:10]):  # Show first 10
+            print(f"    {idx}: '{char}'")
+        if len(dataset.vocab) > 10:
+            print(f"    ... ({len(dataset.vocab) - 10} more)")
+        
+        # Update config with actual vocab size
+        print(f"\nUpdating config vocab size from {config.ctc_vocab_size} to {len(dataset.vocab)}")
+        config.ctc_vocab_size = len(dataset.vocab)
+        config.vocab_size = len(dataset.vocab)
         
         # Create dataloader with just 1 batch
         collator = ASRDataCollator(hop_length=config.hop_length)
@@ -177,6 +188,16 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         print(f"  Input lengths: {batch['input_lengths']}")
         print(f"  Label lengths: {batch['label_lengths']}")
         print(f"  Labels shape: {batch['labels'].shape}")
+        print(f"  Labels min/max: [{batch['labels'].min().item()}, {batch['labels'].max().item()}]")
+        print(f"  Unique labels in batch: {torch.unique(batch['labels']).tolist()}")
+        
+        # Check if labels exceed vocab size
+        if batch['labels'].max() >= len(dataset.vocab):
+            print(f"\n❌ Labels exceed vocabulary size!")
+            print(f"   Max label: {batch['labels'].max().item()}")
+            print(f"   Vocab size: {len(dataset.vocab)}")
+            print(f"   This will cause indexing errors!")
+            return False
         
         # Check for NaN/Inf in batch
         if torch.isnan(batch['audio_input']).any():
@@ -193,6 +214,16 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         model = model.to(device)
         model.eval()
+        
+        print(f"✓ Model created")
+        print(f"  CTC head vocab size: {model.ctc_head.out_features}")
+        print(f"  Dataset vocab size: {len(dataset.vocab)}")
+        
+        if model.ctc_head.out_features != len(dataset.vocab):
+            print(f"\n⚠️  WARNING: Vocab size mismatch!")
+            print(f"     CTC head: {model.ctc_head.out_features}")
+            print(f"     Dataset:  {len(dataset.vocab)}")
+            print(f"     This could cause issues if labels >= {model.ctc_head.out_features}")
         
         # Move batch to device
         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
