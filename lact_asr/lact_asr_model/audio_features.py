@@ -109,15 +109,17 @@ class AudioFeatureExtractor(nn.Module):
         current_dim = input_dim
         
         for i in range(config.audio_encoder_layers):
+            out_channels = config.hidden_size if i == config.audio_encoder_layers - 1 else current_dim * 2
             conv_layers.extend([
                 nn.Conv1d(
                     current_dim, 
-                    config.hidden_size if i == config.audio_encoder_layers - 1 else current_dim * 2,
+                    out_channels,
                     kernel_size=3,
                     stride=1,
                     padding=1
                 ),
-                nn.BatchNorm1d(config.hidden_size if i == config.audio_encoder_layers - 1 else current_dim * 2),
+                # Use float32 for BatchNorm to prevent NaN in mixed precision training
+                nn.BatchNorm1d(out_channels, dtype=torch.float32),
                 nn.ReLU(),
                 nn.Dropout(config.audio_encoder_dropout)
             ])

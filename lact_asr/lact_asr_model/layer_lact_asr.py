@@ -446,7 +446,10 @@ class LaCTASRLayer(nn.Module):
 
         lr = self.lr_proj(hidden_states_ds) # [b, s, num_heads * lr_dim_per_head]
         if self.lr_parameterization == "mamba":
-            lr = torch.nn.functional.softplus(lr.float() + self.base_lr_inv)
+            # Force float32 for numerical stability in softplus operation
+            # This prevents NaN in mixed precision training
+            with torch.cuda.amp.autocast(enabled=False):
+                lr = torch.nn.functional.softplus(lr.float() + self.base_lr_inv)
         else:
             raise NotImplementedError(f"LR parameterization {self.lr_parameterization} not implemented")
         fw_lr = rearrange(lr, 'b s (n_h lr_dim) -> (b n_h) s lr_dim', n_h=self.num_fw_heads)

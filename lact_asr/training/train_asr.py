@@ -263,7 +263,9 @@ class ASRTrainer:
             logger.info(f"  Starting forward pass...")
         
         if self.mixed_precision:
-            with torch.cuda.amp.autocast():
+            # Use mixed precision but with specific dtype control
+            # Some operations need to stay in float32 to avoid NaN
+            with torch.cuda.amp.autocast(dtype=torch.float16):
                 outputs = self.model(
                     audio_input=batch['audio_input'],
                     labels=batch['labels'],
