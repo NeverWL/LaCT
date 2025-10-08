@@ -1,0 +1,392 @@
+Tue Oct  7 11:32:35 PM PDT 2025
+🚀 Starting LaCT ASR Setup and Training Pipeline
+Working directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+Virtual environment: /nfs/hpc/share/limjar/myVenv
+Tue Oct  7 23:32:35 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:1B:00.0 Off |                   On |
+| N/A   28C    P0            182W /  700W |   12214MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA H100 80GB HBM3          On  |   00000000:43:00.0 Off |                   On |
+| N/A   29C    P0            166W /  700W |   23514MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA H100 80GB HBM3          On  |   00000000:52:00.0 Off |                   On |
+| N/A   45C    P0            309W /  700W |   35936MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA H100 80GB HBM3          On  |   00000000:61:00.0 Off |                   On |
+| N/A   27C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA H100 80GB HBM3          On  |   00000000:9D:00.0 Off |                   On |
+| N/A   26C    P0            115W /  700W |     969MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA H100 80GB HBM3          On  |   00000000:C3:00.0 Off |                   On |
+| N/A   21C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA H100 80GB HBM3          On  |   00000000:D1:00.0 Off |                   On |
+| N/A   24C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA H100 80GB HBM3          On  |   00000000:DF:00.0 Off |                   On |
+| N/A   26C    P0             68W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |              Shared Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                Shared BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  5    1   0   0  |              58MiB / 40448MiB    | 64      0 |  4   0    4    0    4 |
+|                  |               0MiB / 24740MiB    |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0    1    0          3534360      C   python                                12102MiB |
+|    1    2    0          1759918      C   python                                23404MiB |
+|    2    2    0          3410289      C   python                                35826MiB |
+|    4    1    0          3943668      C   python                                  434MiB |
+|    4    2    0          3943815      C   python                                  416MiB |
++-----------------------------------------------------------------------------------------+
+
+[0;34m[INFO][0m LaCT ASR Setup and Training Pipeline
+[0;34m[INFO][0m =====================================
+[0;34m[INFO][0m Data directory: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT
+[0;34m[INFO][0m Output directory: ./checkpoints/librispeech_base
+[0;34m[INFO][0m Dataset size: minimal (train-clean-100 dev-clean)
+[0;34m[INFO][0m Training subset: train-clean-100
+[0;34m[INFO][0m Skip download: false
+[0;34m[INFO][0m Download only: false
+[0;34m[INFO][0m Batch size: 8
+[0;34m[INFO][0m Max epochs: 20
+[0;34m[INFO][0m Learning rate: 5e-6
+[0;34m[INFO][0m Mixed precision: true
+[0;34m[INFO][0m Resume training: false
+
+[0;34m[INFO][0m Step 1: Downloading LibriSpeech dataset...
+[1;33m[WARNING][0m Dataset already exists at /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+[0;34m[INFO][0m Using existing dataset (SLURM non-interactive mode)
+[0;34m[INFO][0m Checking Python dependencies...
+[0;32m[SUCCESS][0m All dependencies available
+==================================================
+LibriSpeech Download Configuration
+==================================================
+Data directory: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT
+Subsets to download: train-clean-100 dev-clean
+Force re-download: false
+Skip validation: false
+==================================================
+
+[0;34m[INFO][0m Estimated download size: ~7 GB
+[0;34m[INFO][0m Make sure you have sufficient disk space
+[0;34m[INFO][0m Download method: HuggingFace datasets (works in restricted networks)
+
+[0;34m[INFO][0m Proceeding with download automatically (SLURM mode)
+[1;33m[WARNING][0m Dataset already exists at /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+[0;34m[INFO][0m All requested subsets already exist
+[0;34m[INFO][0m Using existing dataset (SLURM non-interactive mode)
+[0;32m[SUCCESS][0m Dataset download completed
+[0;34m[INFO][0m Step 2: Checking training dependencies...
+Current directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+[0;32m[SUCCESS][0m Virtual environment active: /nfs/hpc/share/limjar/myVenv
+[0;32m[SUCCESS][0m Dependencies check completed
+[0;34m[INFO][0m Step 3: Starting LaCT ASR training...
+🎯 Training command:
+  /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr/examples/train_librispeech.sh --data-dir /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech --output-dir ./checkpoints/librispeech_base --train-subset train-clean-100 --batch-size 8 --epochs 20 --learning-rate 5e-6
+
+Tue Oct  7 11:32:45 PM PDT 2025
+🚀 Starting LaCT ASR training on LibriSpeech
+Working directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+Virtual environment: /nfs/hpc/share/limjar/myVenv
+Tue Oct  7 23:32:46 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:1B:00.0 Off |                   On |
+| N/A   28C    P0            180W /  700W |   12214MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA H100 80GB HBM3          On  |   00000000:43:00.0 Off |                   On |
+| N/A   29C    P0            159W /  700W |   23494MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA H100 80GB HBM3          On  |   00000000:52:00.0 Off |                   On |
+| N/A   46C    P0            350W /  700W |   35936MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA H100 80GB HBM3          On  |   00000000:61:00.0 Off |                   On |
+| N/A   27C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA H100 80GB HBM3          On  |   00000000:9D:00.0 Off |                   On |
+| N/A   26C    P0            117W /  700W |     526MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA H100 80GB HBM3          On  |   00000000:C3:00.0 Off |                   On |
+| N/A   21C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA H100 80GB HBM3          On  |   00000000:D1:00.0 Off |                   On |
+| N/A   24C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA H100 80GB HBM3          On  |   00000000:DF:00.0 Off |                   On |
+| N/A   26C    P0             68W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |              Shared Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                Shared BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  5    1   0   0  |              58MiB / 40448MiB    | 64      0 |  4   0    4    0    4 |
+|                  |               0MiB / 24740MiB    |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0    1    0          3534360      C   python                                12102MiB |
+|    1    2    0          1759918      C   python                                23384MiB |
+|    2    2    0          3410289      C   python                                35826MiB |
+|    4    2    0          3943815      C   python                                  416MiB |
++-----------------------------------------------------------------------------------------+
+
+🆕 Starting fresh training (no existing checkpoint found)
+🎯 Training configuration:
+  LibriSpeech root: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+  Output directory: ./checkpoints/librispeech_base
+  Config file: ./configs/base_asr_config.json
+  Training subset: train-clean-100
+  Validation subset: dev-clean
+  Batch size: 8
+  Max epochs: 20
+  Learning rate: 5e-6
+  Gradient accumulation: 2
+  Max audio duration: 20.0
+  Number of workers: 4
+  Device: cuda
+
+Command: python training/train_asr.py --config_path "./configs/base_asr_config.json" --dataset_type librispeech --data_dir "/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech" --train_subset "train-clean-100" --val_subset "dev-clean" --output_dir "./checkpoints/librispeech_base" --batch_size 8 --max_epochs 20 --learning_rate 5e-6 --gradient_accumulation_steps 2 --max_audio_duration 20.0 --mixed_precision --num_workers 4 --device "cuda" --logging_steps 50 --save_steps 1000 --eval_steps 500 
+
+Current Python version 3.10 is below the recommended 3.11 version. It is recommended to upgrade to Python 3.11 or higher for the best experience.
+torch.compile is not available in Python 3.10, using identity decorator instead
+2025-10-07 23:32:59,466 - __main__ - INFO - Using device: cuda
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/transforms/_transforms.py:581: UserWarning: Argument 'onesided' has been deprecated and has no influence on the behavior of this module.
+  warnings.warn(
+2025-10-07 23:33:00,150 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,181 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,209 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,232 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,256 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,283 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,306 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,329 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,352 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,375 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,398 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,421 - lact_asr_model.modeling_lact_asr - INFO - in PreTrainedModel initialize fast weights for LaCTASRLayer
+2025-10-07 23:33:00,439 - __main__ - INFO - Model created with 88,561,104 total parameters
+2025-10-07 23:33:00,439 - __main__ - INFO - Trainable parameters: 88,561,104
+2025-10-07 23:33:00,502 - data.asr_dataset - INFO - Creating vocabulary from transcripts...
+/nfs/hpc/share/limjar/LaCT/lact_asr/data/asr_dataset.py:128: UserWarning: torchaudio._backend.utils.info has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  info = torchaudio.info(item['audio_filepath'])
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:20: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:27: UserWarning: torchaudio._backend.common.AudioMetaData has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  return AudioMetaData(
+2025-10-07 23:34:42,727 - data.asr_dataset - INFO - Filtered 1 samples by duration
+2025-10-07 23:34:42,727 - data.asr_dataset - INFO - Loaded 28538 samples
+2025-10-07 23:34:42,727 - data.asr_dataset - INFO - Vocabulary size: 29
+2025-10-07 23:34:42,735 - data.asr_dataset - INFO - Creating vocabulary from transcripts...
+2025-10-07 23:34:49,468 - data.asr_dataset - INFO - Filtered 61 samples by duration
+2025-10-07 23:34:49,469 - data.asr_dataset - INFO - Loaded 2642 samples
+2025-10-07 23:34:49,469 - data.asr_dataset - INFO - Vocabulary size: 29
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+2025-10-07 23:34:49,471 - __main__ - INFO - Training samples: 28538
+2025-10-07 23:34:49,471 - __main__ - INFO - Validation samples: 2642
+2025-10-07 23:34:49,471 - __main__ - INFO - Vocabulary size: 29
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:117: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  self.scaler = torch.cuda.amp.GradScaler()
+2025-10-07 23:34:49,796 - __main__ - INFO - Saved config to checkpoints/librispeech_base/config.json
+2025-10-07 23:34:49,797 - __main__ - INFO - Starting training...
+2025-10-07 23:34:49,797 - __main__ - INFO - Total epochs: 20
+2025-10-07 23:34:49,797 - __main__ - INFO - Total steps: unlimited
+2025-10-07 23:34:49,797 - __main__ - INFO - Device: cuda
+2025-10-07 23:34:49,797 - __main__ - INFO - Mixed precision: True
+2025-10-07 23:34:49,798 - __main__ - INFO - Starting epoch 1/20
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+2025-10-07 23:34:50,093 - __main__ - INFO - === Batch 0 Details (Step 0) ===
+2025-10-07 23:34:50,094 - __main__ - INFO -   Audio input shape: torch.Size([8, 253440])
+2025-10-07 23:34:50,174 - __main__ - INFO -   Audio input range: [-0.5961, 0.5862]
+2025-10-07 23:34:50,185 - __main__ - INFO -   Input lengths: tensor([1364, 1401,  641, 1571, 1446, 1584, 1449, 1449], device='cuda:0')
+2025-10-07 23:34:50,186 - __main__ - INFO -   Label lengths: tensor([158, 231,  97, 187, 226, 232, 200, 210], device='cuda:0')
+2025-10-07 23:34:50,186 - __main__ - INFO -   Labels shape: torch.Size([8, 232])
+2025-10-07 23:34:50,225 - __main__ - INFO -   Starting forward pass...
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:266: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+W1007 23:34:57.091000 3949865 torch/_inductor/utils.py:1436] [1/0] Not enough SMs to use max_autotune_gemm mode
+2025-10-07 23:35:03,588 - __main__ - INFO -   Forward pass complete. Loss: NaN/Inf
+2025-10-07 23:35:03,589 - __main__ - INFO -   Logits shape: torch.Size([8, 1585, 32])
+2025-10-07 23:35:03,589 - __main__ - INFO -   Logits range: [nan, nan]
+2025-10-07 23:35:03,589 - __main__ - ERROR - NaN or Inf loss detected at step 0!
+2025-10-07 23:35:03,590 - __main__ - ERROR -   Input lengths: tensor([1364, 1401,  641, 1571, 1446, 1584, 1449, 1449], device='cuda:0')
+2025-10-07 23:35:03,590 - __main__ - ERROR -   Label lengths: tensor([158, 231,  97, 187, 226, 232, 200, 210], device='cuda:0')
+2025-10-07 23:35:03,590 - __main__ - ERROR -   Audio input shape: torch.Size([8, 253440])
+2025-10-07 23:35:03,590 - __main__ - ERROR -   Audio input stats - min: -0.5961, max: 0.5862, mean: -0.0000
+2025-10-07 23:35:03,590 - __main__ - WARNING - Replacing NaN loss with 1e6 to continue training
+2025-10-07 23:35:03,592 - __main__ - INFO -   Loss value: 1000000.0
+2025-10-07 23:35:03,592 - __main__ - INFO - Step 0 | Epoch 1 | Batch 1/3568 | Loss: 1000000.0000 | Avg Loss: 1000000.0000 | LR: 0.00e+00
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+W1007 23:35:14.485000 3949865 torch/_dynamo/convert_frame.py:1016] [1/8] torch._dynamo hit config.recompile_limit (8)
+W1007 23:35:14.485000 3949865 torch/_dynamo/convert_frame.py:1016] [1/8]    function: 'block_causal_lact_swiglu' (/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/../../lact_llm/lact_model/ttt_operation.py:69)
+W1007 23:35:14.485000 3949865 torch/_dynamo/convert_frame.py:1016] [1/8]    last reason: 1/7: tensor 'k' size mismatch at index 1. expected 1180, actual 1063
+W1007 23:35:14.485000 3949865 torch/_dynamo/convert_frame.py:1016] [1/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W1007 23:35:14.485000 3949865 torch/_dynamo/convert_frame.py:1016] [1/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/torch.compiler_troubleshooting.html.
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:329: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+2025-10-07 23:36:28,281 - __main__ - INFO - Validation loss: nan
+2025-10-07 23:36:28,709 - __main__ - INFO - Saved checkpoint: checkpoints/librispeech_base/checkpoint-step-0.pt
+2025-10-07 23:36:29,131 - __main__ - INFO - === Batch 1 Details (Step 0) ===
+2025-10-07 23:36:29,132 - __main__ - INFO -   Audio input shape: torch.Size([8, 236160])
+2025-10-07 23:36:29,132 - __main__ - INFO -   Audio input range: [-0.8511, 0.8321]
+2025-10-07 23:36:29,133 - __main__ - INFO -   Input lengths: tensor([1463, 1248, 1291, 1476,  512, 1445,  741, 1277], device='cuda:0')
+2025-10-07 23:36:29,133 - __main__ - INFO -   Label lengths: tensor([231, 159, 185, 163,  77, 209, 112, 183], device='cuda:0')
+2025-10-07 23:36:29,133 - __main__ - INFO -   Labels shape: torch.Size([8, 231])
+2025-10-07 23:36:29,134 - __main__ - INFO -   Starting forward pass...
+/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py:266: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+2025-10-07 23:36:29,393 - __main__ - INFO -   Forward pass complete. Loss: NaN/Inf
+2025-10-07 23:36:29,393 - __main__ - INFO -   Logits shape: torch.Size([8, 1477, 32])
+2025-10-07 23:36:29,394 - __main__ - INFO -   Logits range: [nan, nan]
+2025-10-07 23:36:29,394 - __main__ - ERROR - NaN or Inf loss detected at step 0!
+2025-10-07 23:36:29,394 - __main__ - ERROR -   Input lengths: tensor([1463, 1248, 1291, 1476,  512, 1445,  741, 1277], device='cuda:0')
+2025-10-07 23:36:29,394 - __main__ - ERROR -   Label lengths: tensor([231, 159, 185, 163,  77, 209, 112, 183], device='cuda:0')
+2025-10-07 23:36:29,394 - __main__ - ERROR -   Audio input shape: torch.Size([8, 236160])
+2025-10-07 23:36:29,394 - __main__ - ERROR -   Audio input stats - min: -0.8511, max: 0.8321, mean: -0.0000
+2025-10-07 23:36:29,394 - __main__ - WARNING - Replacing NaN loss with 1e6 to continue training
+2025-10-07 23:36:29,395 - __main__ - INFO -   Loss value: 1000000.0
+Traceback (most recent call last):
+  File "/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py", line 658, in <module>
+    main()
+  File "/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py", line 654, in main
+    trainer.train()
+  File "/nfs/hpc/share/limjar/LaCT/lact_asr/training/train_asr.py", line 184, in train
+    self.scaler.step(self.optimizer)
+  File "/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torch/amp/grad_scaler.py", line 462, in step
+    len(optimizer_state["found_inf_per_device"]) > 0
+AssertionError: No inf checks were recorded for this optimizer.
+
+Tue Oct  7 11:36:31 PM PDT 2025
+✅ LaCT ASR training completed! Model saved to ./checkpoints/librispeech_base
+
+Tue Oct  7 11:36:31 PM PDT 2025
+✅ LaCT ASR setup and training completed successfully!
+[0;34m[INFO][0m Model checkpoints saved to: ./checkpoints/librispeech_base
+[0;34m[INFO][0m Best model: ./checkpoints/librispeech_base/best_model.pt
+[0;34m[INFO][0m Latest checkpoint: ./checkpoints/librispeech_base/latest_checkpoint.pt
+
+[0;34m[INFO][0m To resume training later, run:
+[0;34m[INFO][0m   /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr/examples/train_librispeech.sh --data-dir /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech --output-dir ./checkpoints/librispeech_base --train-subset train-clean-100 --batch-size 8 --epochs 20 --learning-rate 5e-6
+[0;34m[INFO][0m (The script will automatically detect and resume from the latest checkpoint)

@@ -71,7 +71,7 @@ Options:
   --download-only            Only download dataset, don't start training
   -b, --batch-size SIZE      Training batch size (default: 8)
   -e, --epochs NUM           Maximum training epochs (default: 20)
-  -l, --learning-rate RATE   Learning rate (default: 5e-4)
+  -l, --learning-rate RATE   Learning rate (default: 5e-6)
   --mixed-precision          Enable mixed precision training (default: enabled)
   --resume                   Resume from existing checkpoint if available
   -h, --help                 Show this help message
@@ -94,7 +94,7 @@ SKIP_DOWNLOAD=false
 DOWNLOAD_ONLY=false
 BATCH_SIZE=8
 MAX_EPOCHS=20
-LEARNING_RATE="5e-4"
+LEARNING_RATE="5e-6"
 MIXED_PRECISION=true
 RESUME=false
 
