@@ -198,44 +198,116 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
                 for k, v in batch.items()}
         
-        # Test forward pass
-        print(f"\nPerforming forward pass with real data...")
+        # Test forward pass WITHOUT labels first (no loss computation)
+        print(f"\nPerforming forward pass with real data (no loss)...")
         
         with torch.no_grad():
-            outputs = model(
-                audio_input=batch['audio_input'],
-                labels=batch['labels'],
-                input_lengths=batch['input_lengths'],
-                label_lengths=batch['label_lengths']
+            # Forward through model without computing loss
+            outputs_no_loss = model.model(
+                audio_input=batch['audio_input']
             )
         
-        print(f"✓ Forward pass completed")
-        print(f"  Loss: {outputs.loss.item():.4f}")
-        print(f"  Logits shape: {outputs.logits.shape}")
-        print(f"  Logits range: [{outputs.logits.min():.4f}, {outputs.logits.max():.4f}]")
-        print(f"  Logits mean: {outputs.logits.mean():.4f}")
-        print(f"  Logits std: {outputs.logits.std():.4f}")
+        hidden_states = outputs_no_loss[0]
         
-        # Check for NaN
-        if torch.isnan(outputs.loss):
-            print(f"\n❌ Loss is NaN with real data!")
-            
-            # Debug: check intermediate outputs
-            print(f"\nDebugging intermediate outputs...")
-            
-            # Check hidden states
-            if outputs.hidden_states is not None:
-                for i, hidden in enumerate(outputs.hidden_states):
-                    if torch.isnan(hidden).any():
-                        print(f"  ❌ Layer {i} hidden states contain NaN")
-                        break
-                    else:
-                        print(f"  ✓ Layer {i} hidden states OK - range [{hidden.min():.4f}, {hidden.max():.4f}]")
-            
+        print(f"✓ Model forward pass completed")
+        print(f"  Hidden states shape: {hidden_states.shape}")
+        print(f"  Hidden states range: [{hidden_states.min():.4f}, {hidden_states.max():.4f}]")
+        print(f"  Hidden states mean: {hidden_states.mean():.4f}")
+        print(f"  Hidden states std: {hidden_states.std():.4f}")
+        
+        # Check hidden states for NaN
+        if torch.isnan(hidden_states).any():
+            print(f"\n❌ Hidden states contain NaN!")
+            print(f"   NaN appeared in the model layers (before CTC head)")
             return False
         
-        if torch.isnan(outputs.logits).any():
-            print(f"\n❌ Logits contain NaN with real data!")
+        # Apply CTC head manually
+        print(f"\nApplying CTC head...")
+        logits = model.ctc_head(hidden_states)
+        
+        print(f"✓ CTC head applied")
+        print(f"  Logits shape: {logits.shape}")
+        print(f"  Logits range: [{logits.min():.4f}, {logits.max():.4f}]")
+        print(f"  Logits mean: {logits.mean():.4f}")
+        print(f"  Logits std: {logits.std():.4f}")
+        
+        # Check logits for NaN
+        if torch.isnan(logits).any():
+            print(f"\n❌ Logits contain NaN!")
+            print(f"   NaN appeared in CTC head projection")
+            return False
+        
+        # Apply log softmax
+        print(f"\nApplying log_softmax...")
+        log_probs = torch.log_softmax(logits, dim=-1)
+        
+        print(f"✓ Log softmax applied")
+        print(f"  Log probs range: [{log_probs.min():.4f}, {log_probs.max():.4f}]")
+        print(f"  Log probs mean: {log_probs.mean():.4f}")
+        
+        # Check log_probs for NaN
+        if torch.isnan(log_probs).any():
+            print(f"\n❌ Log probs contain NaN!")
+            print(f"   NaN appeared in log_softmax (likely from -inf in logits)")
+            return False
+        
+        # Prepare for CTC loss
+        print(f"\nPreparing CTC loss inputs...")
+        
+        labels = batch['labels']
+        input_lengths = batch['input_lengths']
+        label_lengths = batch['label_lengths']
+        
+        # Validate CTC constraints
+        print(f"  Input lengths: {input_lengths.tolist()}")
+        print(f"  Label lengths: {label_lengths.tolist()}")
+        print(f"  Max input length: {input_lengths.max().item()}")
+        print(f"  Sequence length: {hidden_states.size(1)}")
+        
+        if (input_lengths > hidden_states.size(1)).any():
+            print(f"\n❌ input_lengths exceed sequence length!")
+            print(f"   Some input_lengths are larger than {hidden_states.size(1)}")
+            return False
+        
+        if (input_lengths < label_lengths).any():
+            print(f"\n❌ CTC constraint violated: input_lengths < label_lengths")
+            return False
+        
+        print(f"✓ CTC constraints satisfied")
+        
+        # Transpose for CTC loss: [batch, time, vocab] -> [time, batch, vocab]
+        print(f"\nTransposing for CTC loss...")
+        log_probs_transposed = log_probs.transpose(0, 1)
+        print(f"  Transposed shape: {log_probs_transposed.shape}")
+        
+        # Compute CTC loss
+        print(f"\nComputing CTC loss...")
+        ctc_loss_fn = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True)
+        
+        loss = ctc_loss_fn(
+            log_probs_transposed,
+            labels,
+            input_lengths,
+            label_lengths
+        )
+        
+        print(f"✓ CTC loss computed")
+        print(f"  Loss value: {loss.item():.4f}")
+        
+        # Check for NaN in loss
+        if torch.isnan(loss):
+            print(f"\n❌ Loss is NaN!")
+            print(f"   NaN appeared during CTC loss computation")
+            print(f"\nDebugging CTC inputs:")
+            print(f"  log_probs contains -inf: {torch.isinf(log_probs).any().item()}")
+            print(f"  log_probs min: {log_probs.min().item():.4f}")
+            print(f"  log_probs max: {log_probs.max().item():.4f}")
+            print(f"  labels min: {labels.min().item()}")
+            print(f"  labels max: {labels.max().item()}")
+            return False
+        
+        if torch.isinf(loss):
+            print(f"\n❌ Loss is Inf!")
             return False
         
         print(f"\n✅ Model works correctly with real data!")
