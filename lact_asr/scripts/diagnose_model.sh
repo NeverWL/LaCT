@@ -93,12 +93,46 @@ fi
 print_success "All required packages available"
 echo ""
 
+# Configuration
+DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech"
+SUBSET="train-clean-100"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--data-dir)
+            DATA_DIR="$2"
+            shift 2
+            ;;
+        -s|--subset)
+            SUBSET="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+print_status "Data directory: $DATA_DIR"
+print_status "Subset: $SUBSET"
+echo ""
+
 # Run diagnostic script
 print_status "Running model diagnostic..."
 echo ""
 echo "=================================================="
 
-python scripts/diagnose_model.py
+# Run with dummy data first, then real data
+if [[ -d "$DATA_DIR" ]]; then
+    print_status "Testing with both dummy and real data..."
+    python scripts/diagnose_model.py --data-dir "$DATA_DIR" --subset "$SUBSET"
+else
+    print_warning "Data directory not found: $DATA_DIR"
+    print_status "Testing with dummy data only..."
+    python scripts/diagnose_model.py
+fi
 
 exit_code=$?
 
