@@ -92,7 +92,7 @@ class ASRTrainer:
         if optimizer is None:
             self.optimizer = AdamW(
                 self.model.parameters(),
-                lr=5e-6,
+                lr=1e-4,
                 betas=(0.9, 0.98),
                 eps=1e-6,
                 weight_decay=0.01
@@ -203,6 +203,10 @@ class ASRTrainer:
                         f"Batch {batch_idx + 1}/{len(self.train_dataloader)} | "
                         f"Loss: {loss.item():.4f} | Avg Loss: {avg_loss:.4f} | LR: {lr:.2e}"
                     )
+                    
+                    # Log sample prediction every 500 steps
+                    if self.global_step % 500 == 0 and self.global_step > 0:
+                        self._log_sample_prediction(batch)
                 
                 # Validation
                 if self.val_dataloader and self.global_step % self.eval_steps == 0:
@@ -315,6 +319,46 @@ class ASRTrainer:
             return None
         
         return loss
+    
+    def _log_sample_prediction(self, batch: Dict[str, torch.Tensor]):
+        """Log a sample prediction to monitor training progress."""
+        try:
+            self.model.eval()
+            with torch.no_grad():
+                outputs = self.model(
+                    audio_input=batch['audio_input'][:1],  # Just first sample
+                    input_lengths=batch['input_lengths'][:1]
+                )
+                logits = outputs.logits
+                
+                # Greedy decode
+                predictions = torch.argmax(logits, dim=-1)
+                pred_indices = predictions[0].cpu().tolist()
+                
+                # CTC decode - remove blanks and duplicates
+                decoded = []
+                prev = None
+                for idx in pred_indices:
+                    if idx != 0 and idx != prev:
+                        decoded.append(idx)
+                    prev = idx
+                
+                # Convert to text if we have vocab
+                if hasattr(self.train_dataloader.dataset, 'idx_to_char'):
+                    pred_text = ''.join([self.train_dataloader.dataset.idx_to_char.get(idx, '?') for idx in decoded])
+                    true_text = batch.get('texts', [''])[0] if 'texts' in batch else 'N/A'
+                    
+                    logger.info(f"=== Sample Prediction at Step {self.global_step} ===")
+                    logger.info(f"  True: {true_text}")
+                    logger.info(f"  Pred: {pred_text}")
+                else:
+                    logger.info(f"=== Sample Prediction at Step {self.global_step} ===")
+                    logger.info(f"  Predicted IDs: {decoded[:50]}")  # First 50 tokens
+            
+            self.model.train()
+        except Exception as e:
+            logger.warning(f"Could not log sample prediction: {e}")
+            self.model.train()
     
     def _validate(self) -> float:
         """Run validation loop."""
@@ -587,7 +631,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--max_epochs", type=int, default=10, help="Maximum number of epochs")
     parser.add_argument("--max_steps", type=int, help="Maximum number of training steps")
-    parser.add_argument("--learning_rate", type=float, default=5e-6, help="Learning rate")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Gradient accumulation steps")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="Maximum gradient norm for clipping")
