@@ -6,6 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=125G
 #SBATCH -o lact_asr_setup_train.log
+#SBATCH --constraint=h200
 
 # Complete setup and training script for LaCT ASR with LibriSpeech
 # This script downloads LibriSpeech and starts training in one go

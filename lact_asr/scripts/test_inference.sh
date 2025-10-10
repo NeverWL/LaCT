@@ -32,7 +32,7 @@ cd /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
 # Default configuration
 DEFAULT_CHECKPOINT_DIR="./checkpoints/librispeech_base"
 DEFAULT_DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech"
-DEFAULT_TEST_SUBSET="test-clean"
+DEFAULT_TEST_SUBSET="train-clean-100"
 DEFAULT_NUM_SAMPLES=10
 
 # Color codes
@@ -146,7 +146,7 @@ if [[ ! -d "$CHECKPOINT_DIR" ]]; then
 fi
 
 # Check for model files
-MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
+MODEL_FILE="$CHECKPOINT_DIR/checkpoint-step-0.pt"
 if [[ ! -f "$MODEL_FILE" ]]; then
     MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
     if [[ ! -f "$MODEL_FILE" ]]; then

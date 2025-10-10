@@ -61,7 +61,7 @@ class ASRTrainer:
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
         device: str = 'cuda',
         output_dir: str = './checkpoints',
-        save_steps: int = 1000,
+        save_steps: int = 5000,
         eval_steps: int = 500,
         logging_steps: int = 100,
         max_steps: Optional[int] = None,
@@ -640,7 +640,7 @@ def main():
     
     # Logging and checkpointing
     parser.add_argument("--logging_steps", type=int, default=100, help="Log every N steps")
-    parser.add_argument("--save_steps", type=int, default=1000, help="Save checkpoint every N steps")
+    parser.add_argument("--save_steps", type=int, default=5000, help="Save checkpoint every N steps")
     parser.add_argument("--eval_steps", type=int, default=500, help="Evaluate every N steps")
     
     # System arguments
