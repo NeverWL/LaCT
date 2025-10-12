@@ -329,7 +329,7 @@ class LaCTASRForCTC(LaCTASRPreTrainedModel):
         self.ctc_head = nn.Linear(config.hidden_size, config.ctc_vocab_size, bias=False)
         
         # CTC loss function
-        self.ctc_loss = nn.CTCLoss(blank=config.ctc_blank_id, reduction='mean', zero_infinity=True)
+        self.ctc_loss = nn.CTCLoss(blank=config.ctc_blank_id, reduction='mean', zero_infinity=False)
         
         # Initialize weights and apply final processing
         self.post_init()

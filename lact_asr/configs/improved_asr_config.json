@@ -1,0 +1,71 @@
+{
+  "model_type": "lact_asr",
+  
+  "_comment": "Larger model for better accuracy on full LibriSpeech dataset",
+  
+  "hidden_size": 1024,
+  "num_hidden_layers": 18,
+  "num_attn_heads": 16,
+  "num_lact_heads": 8,
+  "intermediate_size": 4096,
+  "hidden_ratio": null,
+  
+  "vocab_size": 32,
+  "max_position_embeddings": 16384,
+  
+  "audio_feature_dim": 80,
+  "sample_rate": 16000,
+  "hop_length": 160,
+  "win_length": 400,
+  "n_mels": 80,
+  "n_fft": 512,
+  
+  "ctc_vocab_size": 32,
+  "use_ctc": true,
+  "use_attention": false,
+  "audio_encoder_layers": 3,
+  "audio_encoder_dropout": 0.15,
+  "ctc_blank_id": 0,
+  
+  "lact_chunk_size": 4096,
+  "window_size": 4096,
+  
+  "qkv_bias": false,
+  "attn_qk_norm": true,
+  "qkv_silu": true,
+  "lr_dim": 1,
+  "use_muon": true,
+  "use_momentum": true,
+  "learnable_ttt_scale": true,
+  "ttt_prenorm": false,
+  "ttt_nope": false,
+  "lr_parameterization": "mamba",
+  "rope_theta": 500000.0,
+  "w0_w2_low_rank": -1,
+  "ttt_loss_type": "dot_product",
+  "fw_init_gain": 0.5,
+  "norm_eps": 1e-6,
+  "hidden_act": "swiglu",
+  "fuse_swiglu": true,
+  "fuse_norm": true,
+  "last_layer_fuse_norm": true,
+  
+  "_training_notes": {
+    "description": "Improved configuration for full LibriSpeech training",
+    "improvements": [
+      "Increased hidden_size: 768 -> 1024 (33% more capacity)",
+      "Increased layers: 12 -> 18 (50% deeper)",
+      "Increased attention heads: 12 -> 16",
+      "Increased LaCT heads: 4 -> 8 (more TTT capacity)",
+      "Added 3rd conv layer for better audio features",
+      "Higher dropout (0.15) to prevent overfitting on large dataset"
+    ],
+    "expected_improvements": [
+      "Better long-range dependencies (18 layers)",
+      "More expressive representations (1024 hidden)",
+      "Better audio feature extraction (3 conv layers)",
+      "Improved word boundary detection"
+    ]
+  }
+}
+
