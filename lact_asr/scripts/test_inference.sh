@@ -146,7 +146,7 @@ if [[ ! -d "$CHECKPOINT_DIR" ]]; then
 fi
 
 # Check for model files
-MODEL_FILE="$CHECKPOINT_DIR/checkpoint-step-0.pt"
+MODEL_FILE="$CHECKPOINT_DIR/checkpoint-step-58872.pt"
 if [[ ! -f "$MODEL_FILE" ]]; then
     MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
     if [[ ! -f "$MODEL_FILE" ]]; then
