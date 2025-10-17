@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -t 3-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -J lact_asr_improved_full
 #SBATCH -A eecs
 #SBATCH -p dgxh

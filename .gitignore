@@ -49,3 +49,6 @@ dist/
 .eggs/
 
 *.log
+
+# models
+*.pt
