@@ -340,6 +340,10 @@ for test_set in test_sets:
                 pred_text = ''.join([test_dataset.idx_to_char.get(idx, '?') for idx in decoded])
                 ref_text = batch['texts'][i]
                 
+                # Ensure both are lowercase for fair comparison
+                pred_text = pred_text.lower().strip()
+                ref_text = ref_text.lower().strip()
+                
                 all_predictions.append(pred_text)
                 all_references.append(ref_text)
                 
