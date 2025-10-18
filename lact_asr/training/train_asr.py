@@ -63,17 +63,20 @@ class ASRTrainer:
         output_dir: str = './checkpoints',
         save_steps: int = 5000,
         eval_steps: int = 500,
+        test_eval_steps: int = 5000,  # Evaluate on test-clean every N steps
         logging_steps: int = 100,
         max_steps: Optional[int] = None,
         max_epochs: int = 10,
         gradient_accumulation_steps: int = 1,
         max_grad_norm: float = 1.0,
         mixed_precision: bool = True,
+        test_dataloader: Optional[DataLoader] = None,  # Optional test dataloader
     ):
         self.config = config
         self.model = model.to(device)
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
+        self.test_dataloader = test_dataloader
         self.device = device
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -81,6 +84,7 @@ class ASRTrainer:
         # Training parameters
         self.save_steps = save_steps
         self.eval_steps = eval_steps
+        self.test_eval_steps = test_eval_steps
         self.logging_steps = logging_steps
         self.max_steps = max_steps
         self.max_epochs = max_epochs
@@ -218,6 +222,11 @@ class ASRTrainer:
                         self.best_val_loss = val_loss
                         self._save_checkpoint(is_best=True)
                         logger.info(f"New best validation loss: {val_loss:.4f}")
+                
+                # Test evaluation (monitoring only - not used for model selection)
+                if self.test_dataloader and self.global_step % self.test_eval_steps == 0:
+                    test_loss = self._evaluate_test_set()
+                    logger.info(f"Test-clean loss (monitoring): {test_loss:.4f}")
                 
                 # Save checkpoint
                 if self.global_step % self.save_steps == 0:
@@ -399,6 +408,89 @@ class ASRTrainer:
         self.model.train()
         avg_loss = total_loss / num_batches if num_batches > 0 else float('inf')
         self.val_losses.append(avg_loss)
+        return avg_loss
+    
+    def _evaluate_test_set(self) -> float:
+        """Evaluate model on test-clean set (for monitoring only, not model selection)."""
+        if not self.test_dataloader:
+            return float('inf')
+        
+        logger.info("=" * 60)
+        logger.info("🔍 TEST-CLEAN EVALUATION (Monitoring Only)")
+        logger.info("=" * 60)
+        logger.info("⚠️  NOTE: Test results are for monitoring only - model selection based on validation set")
+        logger.info("=" * 60)
+        
+        self.model.eval()
+        total_loss = 0.0
+        num_batches = 0
+        all_predictions = []
+        all_references = []
+        
+        with torch.no_grad():
+            for batch in self.test_dataloader:
+                # Move to device
+                batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v 
+                        for k, v in batch.items()}
+                
+                # Forward pass
+                outputs = self.model(
+                    audio_input=batch['audio_input'],
+                    input_lengths=batch['input_lengths'],
+                    labels=batch['labels'],
+                    label_lengths=batch['label_lengths']
+                )
+                
+                loss = outputs.loss
+                if loss is not None and not torch.isnan(loss) and not torch.isinf(loss):
+                    total_loss += loss.item()
+                    num_batches += 1
+                    
+                    # Collect predictions for sample analysis (first batch only)
+                    if num_batches == 1:
+                        logits = outputs.logits
+                        for i in range(min(3, len(batch['audio_input']))):  # Show first 3 samples
+                            # Get sample data
+                            sample_length = batch['input_lengths'][i].item()
+                            sample_logits = logits[i, :sample_length]
+                            
+                            # Greedy decode
+                            predictions = torch.argmax(sample_logits, dim=-1)
+                            pred_indices = predictions.cpu().tolist()
+                            
+                            # CTC decode - remove blanks and duplicates
+                            decoded = []
+                            prev = None
+                            for idx in pred_indices:
+                                if idx != 0 and idx != prev:
+                                    decoded.append(idx)
+                                prev = idx
+                            
+                            # Convert to text (assuming we have access to vocab)
+                            # For now, just store the indices
+                            all_predictions.append(decoded)
+                            all_references.append(batch['texts'][i])
+        
+        self.model.train()
+        avg_loss = total_loss / num_batches if num_batches > 0 else float('inf')
+        
+        # Log test results
+        logger.info(f"📊 Test-clean evaluation results:")
+        logger.info(f"  Average test loss: {avg_loss:.4f}")
+        logger.info(f"  Batches evaluated: {num_batches}")
+        
+        # Show sample predictions
+        if all_predictions:
+            logger.info(f"📝 Sample test predictions:")
+            for i, (pred, ref) in enumerate(zip(all_predictions[:3], all_references[:3])):
+                logger.info(f"  Sample {i+1}:")
+                logger.info(f"    REF:  {ref}")
+                logger.info(f"    PRED: [indices: {pred[:50]}{'...' if len(pred) > 50 else ''}]")
+        
+        logger.info("=" * 60)
+        logger.info("✅ Test evaluation completed - continuing training...")
+        logger.info("=" * 60)
+        
         return avg_loss
     
     def _save_checkpoint(self, is_best: bool = False):
@@ -623,6 +715,8 @@ def main():
     parser.add_argument("--vocab_path", type=str, help="Path to vocabulary file")
     parser.add_argument("--train_subset", type=str, help="Training subset (for LibriSpeech)")
     parser.add_argument("--val_subset", type=str, help="Validation subset (for LibriSpeech)")
+    parser.add_argument("--test_subset", type=str, help="Test subset (for LibriSpeech) - used for monitoring only")
+    parser.add_argument("--test_eval_steps", type=int, default=5000, help="Steps between test set evaluations")
     parser.add_argument("--language", type=str, default="en", help="Language code (for Common Voice)")
     parser.add_argument("--max_audio_duration", type=float, default=20.0, help="Maximum audio duration in seconds")
     
@@ -705,6 +799,33 @@ def main():
     # Create datasets and dataloaders (will reuse the vocab from temp_dataset)
     train_dataloader, val_dataloader = create_datasets_and_dataloaders(args, config)
     
+    # Create test dataloader if test subset is specified
+    test_dataloader = None
+    if args.test_subset and args.dataset_type == "librispeech":
+        logger.info(f"Creating test dataloader for subset: {args.test_subset}")
+        test_dataset = LibriSpeechDataset(
+            root_dir=args.data_dir,
+            subset=args.test_subset,
+            sample_rate=config.sample_rate,
+            max_duration=args.max_audio_duration,
+            normalize_text=True,
+        )
+        
+        # Reuse vocab from training dataset
+        test_dataset.char_to_idx = temp_dataset.char_to_idx
+        test_dataset.idx_to_char = temp_dataset.idx_to_char
+        test_dataset.vocab = temp_dataset.vocab
+        
+        collator = ASRDataCollator(hop_length=config.hop_length)
+        test_dataloader = create_asr_dataloader(
+            test_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            collate_fn=collator,
+        )
+        logger.info(f"Test dataset loaded: {len(test_dataset)} samples")
+    
     # Verify vocab size matches
     logger.info(f"Model CTC head vocab size: {model.ctc_head.out_features}")
     logger.info(f"Config vocab size: {config.ctc_vocab_size}")
@@ -730,11 +851,13 @@ def main():
         model=model,
         train_dataloader=train_dataloader,
         val_dataloader=val_dataloader,
+        test_dataloader=test_dataloader,
         optimizer=optimizer,
         device=args.device,
         output_dir=args.output_dir,
         save_steps=args.save_steps,
         eval_steps=args.eval_steps,
+        test_eval_steps=args.test_eval_steps,
         logging_steps=args.logging_steps,
         max_steps=args.max_steps,
         max_epochs=args.max_epochs,
