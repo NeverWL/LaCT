@@ -1,0 +1,47 @@
+{
+  "model_checkpoint": "./checkpoints/librispeech_improved_full/best_model.pt",
+  "config": "./checkpoints/librispeech_improved_full/config.json",
+  "training_step": "91000",
+  "training_epoch": "6",
+  "model_config": {
+    "hidden_size": 1024,
+    "num_layers": 18,
+    "num_lact_heads": 8,
+    "num_attn_heads": 16
+  },
+  "beam_width": 1,
+  "results": {
+    "dev-clean": {
+      "wer": 22.67362729560921,
+      "cer": 6.694541525444607,
+      "num_samples": 2694,
+      "avg_inference_time_ms": 68.03825021940598,
+      "rtf": 0.005075550730928238,
+      "total_audio_hours": 10.03148097222227,
+      "wer_by_length": {
+        "15": 24.593662001456842,
+        "10": 24.02768190467049,
+        "5": 24.837601096300734,
+        "20": 24.40803090519926,
+        "25": 23.73703182827747,
+        "0": 21.449384969605557
+      }
+    },
+    "test-clean": {
+      "wer": 91.93495559023563,
+      "cer": 37.4170838717108,
+      "num_samples": 2611,
+      "avg_inference_time_ms": 28.02633974388704,
+      "rtf": 0.0019810954622923784,
+      "total_audio_hours": 10.260425000000069,
+      "wer_by_length": {
+        "20": 92.86160171962959,
+        "15": 92.26752094593937,
+        "5": 91.70215912392912,
+        "25": 93.61816078120594,
+        "10": 92.24205412992302,
+        "0": 95.02981495628555
+      }
+    }
+  }
+}

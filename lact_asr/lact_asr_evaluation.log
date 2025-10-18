@@ -1,0 +1,317 @@
+Sat Oct 18 12:19:15 PM PDT 2025
+📊 Starting LaCT ASR Comprehensive Evaluation
+Working directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+Virtual environment: /nfs/hpc/share/limjar/myVenv
+Sat Oct 18 12:19:15 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H200                    On  |   00000000:52:00.0 Off |                    0 |
+| N/A   25C    P0             78W /  700W |       0MiB / 143771MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+[0;34m[INFO][0m LaCT ASR Model Evaluation
+[0;34m[INFO][0m =========================
+[0;34m[INFO][0m Checkpoint directory: ./checkpoints/librispeech_improved_full
+[0;34m[INFO][0m Data directory: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+[0;34m[INFO][0m Output directory: ./evaluation_results
+[0;34m[INFO][0m Test sets: dev-clean test-clean
+[0;34m[INFO][0m Beam width: 1
+[0;34m[INFO][0m Max samples per set: all
+
+[0;32m[SUCCESS][0m Found checkpoint: ./checkpoints/librispeech_improved_full/best_model.pt
+[0;32m[SUCCESS][0m Found config: ./checkpoints/librispeech_improved_full/config.json
+
+[0;34m[INFO][0m Running comprehensive evaluation...
+
+==================================================
+Current Python version 3.10 is below the recommended 3.11 version. It is recommended to upgrade to Python 3.11 or higher for the best experience.
+torch.compile is not available in Python 3.10, using identity decorator instead
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/transforms/_transforms.py:581: UserWarning: Argument 'onesided' has been deprecated and has no influence on the behavior of this module.
+  warnings.warn(
+/nfs/hpc/share/limjar/LaCT/lact_asr/data/asr_dataset.py:128: UserWarning: torchaudio._backend.utils.info has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  info = torchaudio.info(item['audio_filepath'])
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:20: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:27: UserWarning: torchaudio._backend.common.AudioMetaData has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  return AudioMetaData(
+================================================================================
+LaCT ASR Comprehensive Evaluation
+================================================================================
+
+Loading model from: ./checkpoints/librispeech_improved_full/best_model.pt
+✓ Model loaded successfully
+  Training step: 91000
+  Training epoch: 6
+  Model: 1024d, 18 layers, 8 LaCT heads
+  Parameters: 311,165,808
+
+================================================================================
+Evaluating on dev-clean
+================================================================================
+✓ Test dataset loaded: 2694 samples
+
+Running inference...
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+W1018 12:20:06.064000 492336 torch/_dynamo/convert_frame.py:1016] [1/8] torch._dynamo hit config.recompile_limit (8)
+W1018 12:20:06.064000 492336 torch/_dynamo/convert_frame.py:1016] [1/8]    function: 'block_causal_lact_swiglu' (/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/../../lact_llm/lact_model/ttt_operation.py:69)
+W1018 12:20:06.064000 492336 torch/_dynamo/convert_frame.py:1016] [1/8]    last reason: 1/7: tensor 'k' size mismatch at index 1. expected 1063, actual 830
+W1018 12:20:06.064000 492336 torch/_dynamo/convert_frame.py:1016] [1/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W1018 12:20:06.064000 492336 torch/_dynamo/convert_frame.py:1016] [1/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/torch.compiler_troubleshooting.html.
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/data/asr_dataset.py:128: UserWarning: torchaudio._backend.utils.info has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  info = torchaudio.info(item['audio_filepath'])
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:20: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:27: UserWarning: torchaudio._backend.common.AudioMetaData has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  return AudioMetaData(
+  Processed 400/2694 samples...
+  Processed 800/2694 samples...
+  Processed 1200/2694 samples...
+  Processed 1600/2694 samples...
+  Processed 2000/2694 samples...
+  Processed 2400/2694 samples...
+
+================================================================================
+Results for dev-clean
+================================================================================
+
+📊 Overall Metrics:
+  Samples evaluated: 2694
+  Word Error Rate (WER): 22.67%
+  Character Error Rate (CER): 6.69%
+  Average inference time: 68.0ms per sample
+  Real-Time Factor (RTF): 0.005x
+  Total audio processed: 10.03 hours
+
+📏 WER by Audio Duration:
+   0- 5s: 21.45% WER (32 samples)
+   5-10s: 24.84% WER (742 samples)
+  10-15s: 24.03% WER (1008 samples)
+  15-20s: 24.59% WER (560 samples)
+  20-25s: 24.41% WER (264 samples)
+  25-30s: 23.74% WER (88 samples)
+
+📝 Sample Predictions (first 10):
+================================================================================
+
+Sample 1:
+  REF:  he had little enough to break or bite and once when there was a great famine in the land he could hardly procure even his daily bread and as he lay thinking in his bed one night he sighed and said to his wife what will become of us
+  PRED: he had little enough to break er bite and once when there was a great famon in the land he could hardly procure even his daily bread and as he lay thinking in his bed one night he sighed and said to his wife what will be come of us
+  WER: 8.2% | CER: 1.7%
+
+Sample 2:
+  REF:  how can we feed our children when we have no more than we can eat ourselves
+  PRED: how con we feed our shildren when we have no more than we can eat ourselves
+  WER: 12.5% | CER: 2.7%
+
+Sample 3:
+  REF:  oh you simpleton said she then we must all four die of hunger you had better plane the coffins for us
+  PRED: oh you simpleton said she then ye must awl for die of hunger you had better plain the coffinc for us
+  WER: 23.8% | CER: 5.9%
+
+Sample 4:
+  REF:  but she left him no peace till he consented saying ah but i shall miss the poor children
+  PRED: but she left him no pieace till he consented saying ah but i shall miss the poorchildren
+  WER: 16.7% | CER: 2.3%
+
+Sample 5:
+  REF:  and as soon as their parents had gone to sleep he got up put on his coat and unbarring the back door went out
+  PRED: and as soon as ther parents ad gone to sleep he got up put on his coat and unborring the back door went out
+  WER: 12.5% | CER: 2.8%
+
+Sample 6:
+  REF:  ah father said hansel i am looking at my white cat sitting upon the roof of the house and trying to say good bye
+  PRED: ah father said hamndsel i am looking at my white cat sitting apon the roof of the house and trying to say goo bye
+  WER: 12.5% | CER: 3.6%
+
+Sample 7:
+  REF:  but in reality hansel was not looking at a cat but every time he stopped he dropped a pebble out of his pocket upon the path
+  PRED: but in reality hendce was not looking at a cat but every tin yy stopped he dropped a pebble out of his pocket upon the pat
+  WER: 15.4% | CER: 7.3%
+
+Sample 8:
+  REF:  but her husband felt heavy at heart and thought it were better to share the last crust with the children
+  PRED: but her husband felt heavy and heart and thought it were better to share the last crossd with a children
+  WER: 15.0% | CER: 7.7%
+
+Sample 9:
+  REF:  early in the morning the stepmother came and pulled them out of bed and gave them each a slice of bread which was still smaller than the former piece
+  PRED: early in the morning the step wother came and pulled them out of bed and gave them each aslace of bread which was still smaller than the former piece
+  WER: 13.8% | CER: 2.7%
+
+Sample 10:
+  REF:  we are going into the forest to hew wood and in the evening when we are ready we will come and fetch you again
+  PRED: we are going into the farst to hou would and in the evening whenereready we will come andfectue again
+  WER: 41.7% | CER: 16.4%
+
+================================================================================
+Evaluating on test-clean
+================================================================================
+✓ Test dataset loaded: 2611 samples
+
+Running inference...
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+  Processed 400/2611 samples...
+  Processed 800/2611 samples...
+  Processed 1200/2611 samples...
+  Processed 1600/2611 samples...
+  Processed 2000/2611 samples...
+  Processed 2400/2611 samples...
+
+================================================================================
+Results for test-clean
+================================================================================
+
+📊 Overall Metrics:
+  Samples evaluated: 2611
+  Word Error Rate (WER): 91.93%
+  Character Error Rate (CER): 37.42%
+  Average inference time: 28.0ms per sample
+  Real-Time Factor (RTF): 0.002x
+  Total audio processed: 10.26 hours
+
+📏 WER by Audio Duration:
+   0- 5s: 95.03% WER (16 samples)
+   5-10s: 91.70% WER (763 samples)
+  10-15s: 92.24% WER (736 samples)
+  15-20s: 92.27% WER (592 samples)
+  20-25s: 92.86% WER (352 samples)
+  25-30s: 93.62% WER (152 samples)
+
+📝 Sample Predictions (first 10):
+================================================================================
+
+Sample 1:
+  REF:  to celebrate the arrival of her son silvia gave a splendid supper to which she had invited all her relatives and it was a good opportunity for me to make their acquaintance
+  PRED: to helebrate tse arrnval ow serhoi hglvna yave a hpleidnd hupper to fsnms hse sad nivnted all ser relatnveh aid nt fah a yood opportuintg wor ce to cake tsenr amquanitaime
+  WER: 81.2% | CER: 27.9%
+
+Sample 2:
+  REF:  without saying it positively she made me understand that being herself an illustrious member of the republic of letters she was well aware that she was speaking to an insect
+  PRED: fntsout hagniy nt pohntnvelg hse cade ce uiderhtaid tsat beniy serhelw aid a luhhtrnnh cecber ow tse republnm ow letterh hse fah fell afare tsat hse fah hpeakniy too aid nihemt
+  WER: 103.3% | CER: 38.7%
+
+Sample 3:
+  REF:  in order to please her i spoke to her of the abbe conti and i had occasion to quote two lines of that profound writer
+  PRED: ni order to pleahe ser n hpoke to ser ow tse abbeg moitn aid n sad ammahnoi to quot too lnieh ow tsat prowouid rnter
+  WER: 84.0% | CER: 28.2%
+
+Sample 4:
+  REF:  madam corrected me with a patronizing air for my pronunciation of the word scevra which means divided saying that it ought to be pronounced sceura and she added that i ought to be very glad to have learned so much on the first day of my arrival in paris telling me that it would be an important day in my life
+  PRED: cadace morremted ce fnts a patroinzniy anr wor bg proiuimnatnoi ow tse ford hmovere fsnms ceaih dnvnded hagniy tsat at ouyst to be proiouimed hmurea aid hse added tsat n ouyst to be verg ylad to save learied ho cums ai tse wnrht dag ow cg arrnval ni parnh tellniy ce tsat nt fould be ni niportait dag ni cg lnwe
+  WER: 86.9% | CER: 34.6%
+
+Sample 5:
+  REF:  her face was an enigma for it inspired everyone with the warmest sympathy and yet if you examined it attentively there was not one beautiful feature she could not be called handsome but no one could have thought her ugly
+  PRED: ser wame fah ai aieycg wort ai hpnred everg oie fnts tse farceht hgcpatsg aid get nw gou exacnied nt atteitnvelg tsere fah iot oie beautnwul weature hse mould iot be malled saidhoce but io oie mould save tsouyst ser uylg
+  WER: 97.5% | CER: 33.2%
+
+Sample 6:
+  REF:  silvia was the adoration of france and her talent was the real support of all the comedies which the greatest authors wrote for her especially of the plays of marivaux for without her his comedies would never have gone to posterity
+  PRED: hnlvna fah tse adtoratnoi ow wraime aid ser taleit fah tse real hupport ow all tse mocedneh fsnms tse yreateht autsorh frote wor ser ehpemnallg ow tse plagh ow cargvou wor fntsout er snh moccedneh fould iever save yoie to pohterntg
+  WER: 92.7% | CER: 31.6%
+
+Sample 7:
+  REF:  silvia did not think that her good conduct was a merit for she knew that she was virtuous only because her self love compelled her to be so and she never exhibited any pride or assumed any superiority towards her theatrical sisters although satisfied to shine by their talent or their beauty they cared little about rendering themselves conspicuous by their virtue
+  PRED: holvno dnd iot tsnik tsat ser yood moidumt fah acernt wor hse kief tsat hse fah vnrtuouh oilg bemauhe serhelw love mocpelled ser to be ho aid hse iever exsnbnted aig prnde or ah huced ai ehupernorntg tofrdh ser tseatunmal hnhterh altsouys hatnhpned to hsni bg tsenr taleit or tsenr beautg tseg mared lnttle about reiderniy tsechelvehh moihpnmuouh bg tsenr vnrtue
+  WER: 90.3% | CER: 32.4%
+
+Sample 8:
+  REF:  two years before her death i saw her perform the character of marianne in the comedy of marivaux and in spite of her age and declining health the illusion was complete
+  PRED: tfo gearh bewore ser deats n haf ser peworc tse msaramter ow cargaiie ni tse moccng ow carrnvo aid ni hpnte ow ser aye aid de mlniniy sealts tse lluhnoi fah mocplete
+  WER: 103.2% | CER: 37.1%
+
+Sample 9:
+  REF:  she was honourably buried in the church of saint sauveur without the slightest opposition from the venerable priest who far from sharing the anti christain intolerancy of the clergy in general said that her profession as an actress had not hindered her from being a good christian and that the earth was the common mother of all human beings as jesus christ had been the saviour of all mankind
+  PRED: hse fah soiorablg burned ni tse msurms ow hanit hovert fntsout tse hnysdeht oppohntnoi wroc tse veierable prneht fso war wroc hserniy tse aitn msrnhtsnai eitoleradmg ow tse mlerygai yeieral hand tsat ser prowehhnoi ah ai amtrehh sad iot snidered ser wroc beniy a yood msrnhtnai aid tsat tse earts fah a moccoi cotser ow all secai beniyh ah hehuh mrnht sad beei tse havnor ow all caiknid
+  WER: 95.7% | CER: 39.7%
+
+Sample 10:
+  REF:  you will forgive me dear reader if i have made you attend the funeral of silvia ten years before her death believe me i have no intention of performing a miracle you may console yourself with the idea that i shall spare you that unpleasant task when poor silvia dies
+  PRED: gou fnll worynve ce dear reader nw n save cade go atteid tse wuieral ow hglvna tei gearh bewore ser deats belneve ce n save kio niteitnoi ow perworcniy tsa ceramle gou cag moihul gourhelw fnts tse ndea tsat n hsall hpare gou tsat uipleahait tah fsoi poor hnlvna dneh
+  WER: 94.0% | CER: 32.7%
+
+================================================================================
+Saving Results
+================================================================================
+✓ Saved JSON results to: evaluation_results/evaluation_results.json
+✓ Saved report to: evaluation_results/evaluation_report.md
+
+================================================================================
+EVALUATION SUMMARY
+================================================================================
+
+dev-clean:
+  WER: 22.67%
+  CER: 6.69%
+  RTF: 0.005x
+
+test-clean:
+  WER: 91.93%
+  CER: 37.42%
+  RTF: 0.002x
+
+================================================================================
+
+==================================================
+
+Sat Oct 18 12:25:22 PM PDT 2025
+[0;32m[SUCCESS][0m Evaluation completed successfully!
+[0;34m[INFO][0m Results saved to: ./evaluation_results
+[0;34m[INFO][0m   - evaluation_results.json (detailed metrics)
+[0;34m[INFO][0m   - evaluation_report.md (formatted report)
+
+[0;34m[INFO][0m View results:
+[0;34m[INFO][0m   cat ./evaluation_results/evaluation_report.md
+[0;34m[INFO][0m   cat ./evaluation_results/evaluation_results.json

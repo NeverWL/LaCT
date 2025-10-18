@@ -1,0 +1,270 @@
+Fri Oct 10 10:39:19 PM PDT 2025
+🎤 Starting LaCT ASR Inference Test
+Working directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+Virtual environment: /nfs/hpc/share/limjar/myVenv
+Fri Oct 10 22:39:19 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:1B:00.0 Off |                   On |
+| N/A   26C    P0            130W /  700W |    4462MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA H100 80GB HBM3          On  |   00000000:43:00.0 Off |                   On |
+| N/A   51C    P0            532W /  700W |   45469MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA H100 80GB HBM3          On  |   00000000:52:00.0 Off |                   On |
+| N/A   47C    P0            130W /  700W |   31713MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA H100 80GB HBM3          On  |   00000000:61:00.0 Off |                   On |
+| N/A   26C    P0             68W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA H100 80GB HBM3          On  |   00000000:9D:00.0 Off |                   On |
+| N/A   23C    P0             67W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA H100 80GB HBM3          On  |   00000000:C3:00.0 Off |                   On |
+| N/A   22C    P0             69W /  700W |     105MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA H100 80GB HBM3          On  |   00000000:D1:00.0 Off |                   On |
+| N/A   25C    P0             69W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA H100 80GB HBM3          On  |   00000000:DF:00.0 Off |                   On |
+| N/A   29C    P0            119W /  700W |     428MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |              Shared Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                Shared BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  0    2   0   0  |              44MiB / 40448MiB    | 60      0 |  3   0    3    0    3 |
+|                  |               0MiB / 24740MiB    |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    1    1    0          2861397      C   ...ga2/conda-env/diff/bin/python      22684MiB |
+|    1    2    0          3033620      C   ...ga2/conda-env/diff/bin/python      22666MiB |
+|    2    1    0           837545      C   ...a3/envs/hdc-env/bin/python3.9        634MiB |
+|    2    1    0          1238921      C   ...a3/envs/hdc-env/bin/python3.9       1454MiB |
+|    2    1    0          1323811      C   ...a3/envs/hdc-env/bin/python3.9       1962MiB |
+|    2    1    0          1331431      C   ...a3/envs/hdc-env/bin/python3.9       1482MiB |
+|    2    1    0          1361596      C   ...a3/envs/hdc-env/bin/python3.9       1196MiB |
+|    2    1    0          1375640      C   ...a3/envs/hdc-env/bin/python3.9       1196MiB |
+|    2    1    0          1391390      C   ...a3/envs/hdc-env/bin/python3.9        470MiB |
+|    2    2    0          3278373      C   python                                23166MiB |
+|    7    2    0           594647      C   ...s/memristor_rc_env/bin/python        318MiB |
++-----------------------------------------------------------------------------------------+
+
+[0;34m[INFO][0m LaCT ASR Inference Test
+[0;34m[INFO][0m =======================
+[0;34m[INFO][0m Checkpoint directory: ./checkpoints/librispeech_base
+[0;34m[INFO][0m Data directory: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+[0;34m[INFO][0m Test subset: train-clean-100
+[0;34m[INFO][0m Number of samples: 10
+[0;34m[INFO][0m Beam width: 1
+
+[0;32m[SUCCESS][0m Found checkpoint: ./checkpoints/librispeech_base/checkpoint-step-58872.pt
+[0;32m[SUCCESS][0m Found config: ./checkpoints/librispeech_base/config.json
+
+[0;32m[SUCCESS][0m Found test data: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech/train-clean-100
+
+[0;34m[INFO][0m Running inference test...
+
+==================================================
+Current Python version 3.10 is below the recommended 3.11 version. It is recommended to upgrade to Python 3.11 or higher for the best experience.
+torch.compile is not available in Python 3.10, using identity decorator instead
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/transforms/_transforms.py:581: UserWarning: Argument 'onesided' has been deprecated and has no influence on the behavior of this module.
+  warnings.warn(
+/nfs/hpc/share/limjar/LaCT/lact_asr/data/asr_dataset.py:128: UserWarning: torchaudio._backend.utils.info has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  info = torchaudio.info(item['audio_filepath'])
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:20: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:27: UserWarning: torchaudio._backend.common.AudioMetaData has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  return AudioMetaData(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:282: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+W1010 22:42:30.561000 933117 torch/_inductor/utils.py:1436] [1/0] Not enough SMs to use max_autotune_gemm mode
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+W1010 22:42:44.532000 933117 torch/_dynamo/convert_frame.py:1016] [1/8] torch._dynamo hit config.recompile_limit (8)
+W1010 22:42:44.532000 933117 torch/_dynamo/convert_frame.py:1016] [1/8]    function: 'block_causal_lact_swiglu' (/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/../../lact_llm/lact_model/ttt_operation.py:69)
+W1010 22:42:44.532000 933117 torch/_dynamo/convert_frame.py:1016] [1/8]    last reason: 1/7: tensor 'k' size mismatch at index 1. expected 1397, actual 1333
+W1010 22:42:44.532000 933117 torch/_dynamo/convert_frame.py:1016] [1/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W1010 22:42:44.532000 933117 torch/_dynamo/convert_frame.py:1016] [1/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/torch.compiler_troubleshooting.html.
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+Loading model...
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+init low rank fast weight 4 192 192 32
+✓ Model loaded from ./checkpoints/librispeech_base/checkpoint-step-58872.pt
+  Config: hidden_size=768, layers=12
+  Vocab size: 29
+
+Loading test dataset: train-clean-100
+✓ Test dataset loaded: 28538 samples
+
+Testing on 10 random samples...
+============================================================
+
+Sample 1/10:
+  True: AN EXAMINATION OF THE FIRST DRAWER DID NOT PRODUCE ALL THAT SHE HAD EXPECTED SHE RETURNED THE PAPERS TO THE DRAWER PUSHED IT TO AND LOCKED IT SHE GAVE HER ATTENTION TO THE SECOND DRAWER HER HAND SHOOK A LITTLE AS SHE PULLED IT OPEN
+  Pred: an igamanationn of e fordor ti nopredde sol thet hitispeci she rertern the paperso the dro possh tick to and locki she gave herteon to the secindror herhan shhueilasshoupoitoben
+  Match: ✗
+
+Sample 2/10:
+  True: FOR AN HOUR THE WOMAN SAT IN THE DARKNESS AND HELD HER BOY ALL THE TIME SHE KEPT TALKING IN A LOW VOICE DAVID COULD NOT UNDERSTAND WHAT HAD SO CHANGED HER HER HABITUALLY DISSATISFIED FACE HAD BECOME HE THOUGHT
+  Pred: arin ow theoen setn t dortmesn hder bbo al the tim she cop tokingand alovois tay bed conotanderstan whit id ocangstur herr hi bituay de sedes fi fac han becom he  fat
+  Match: ✗
+
+Sample 3/10:
+  True: SHE HELD OUT HER HAND AND HE HESITATED AFTER ALL HE HAD NO RIGHT OR TITLE TO THIS CURIOUS PURSE HE COMPROMISED BY PUTTING IT ON THE TABLE AND SHE DID NOT ATTEMPT TO TAKE IT ODETTE HE SAID GENTLY AND WALKED ROUND TO HER
+  Pred: e al latter hen and he has ataet a der all head no rier tile to thes curio pers he conpermis by potin itd ou the table in she di non tento ta et o ded he said jetly and wapruner her
+  Match: ✗
+
+Sample 4/10:
+  True: WITHOUT THE WASTE OF A MOMENT THEY CLIMBED IN LIEUTENANT MACKINSON OUR THREE FRIENDS YOUNG HOSKINS AND THE TOWERING RAWLE IN ANOTHER INSTANT THEY WERE SPEEDING ACROSS THE COUNTRY WITH THE BREAK OF DAWN
+  Pred: eth ou the wa s of o monon y clined din whetenen macancen roreafand gon hasinin the tauing all in emee ininterespeiin coss tomty with raudon
+  Match: ✗
+
+Sample 5/10:
+  True: I HAD NOT SEEN HIM BEFORE SINCE THE DESTRUCTION OF THE TOWN AND I KNEW NOT WHERE HE WAS TILL I WAS INFORMED BY HIMSELF THAT HE WAS AMONGST A SMALLER PARCEL OF INDIANS WHOSE PLACE WAS ABOUT SIX MILES OFF WITH TEARS IN HIS EYES HE ASKED ME WHETHER HIS SISTER SARAH WAS DEAD
+  Pred: e nosen a beforas te the structinn whith ton and in noot warrhe was fol on was neffor bi hom sel ta e was a lontsosmaler paellinu sos pas was abo sixius if fi tearsoas as e asy wather sisoserwas daat
+  Match: ✗
+
+Sample 6/10:
+  True: BUT THIS WAS NOT EASY LOCKE HAD AT OXFORD ABSTAINED FROM EXPRESSING ANY OPINION ON THE POLITICS OF THE DAY SPIES HAD BEEN SET ABOUT HIM DOCTORS OF DIVINITY AND MASTERS OF ARTS
+  Pred: at thisws nodysy bog cad at osfert be sstan from mixpresing any apanin onthetepolitixof the day spos had bensad abot im docters o tif vin aty and masters of ars
+  Match: ✗
+
+Sample 7/10:
+  True: HIS COUNTENANCE GRADUALLY LIGHTING INTO A SMILE OF PLEASURE
+  Pred: as col mesgradely liging into ismo pleur
+  Match: ✗
+
+Sample 8/10:
+  True: THE ROMAN AND THE PERSIAN EMPIRES DRAINED OF MEN AND MONEY AND RAVAGED FROM END TO END BY EACH OTHER'S MARAUDING ARMIES SANK DOWN IN EXHAUSTION TO HEAL THEM OF THEIR DEADLY WOUNDS
+  Pred: a roin an the perion hempars dran of man an mony an revig fromant to and iech o thers mroding ormysa dawn inexsoion to hial them  of ther dotly wos
+  Match: ✗
+
+Sample 9/10:
+  True: OUT INTO THE STARLIGHT I CREPT TO ROUSE THE GRAY PHYSICIAN THE SHADOW OF DEATH THE SHADOW OF DEATH THE HOURS TREMBLED ON THE NIGHT LISTENED
+  Pred: euato the stavaa crept torased the gra fositionon  shanda wif dit a shad aale ta yeow wes tomel an the nilisan
+  Match: ✗
+
+Sample 10/10:
+  True: AND REPLACEABLE STRUCTURES INDEED BOTH THESE TWO PEOPLE FOUND THEMSELVES THINKING IN THIS FASHION WITH AN UNWONTED COURAGE AND FREEDOM BECAUSE THE OTHER ONE HAD BEEN DISPOSED TO THINK IN THIS FASHION BEFORE
+  Pred: and replsuble structes inde  bov th thes to peple fon tham  els stangingg in thesfasion witth han onoin curig andfreetem becase thee other won hadbeendospose di fingk in thisfasion the or
+  Match: ✗
+
+============================================================
+Results:
+  Exact matches: 0/10 (0.0%)
+============================================================
+
+==================================================
+
+Fri Oct 10 10:42:47 PM PDT 2025
+[0;32m[SUCCESS][0m Inference test completed successfully!
+[0;34m[INFO][0m Model checkpoint: ./checkpoints/librispeech_base/checkpoint-step-58872.pt
+[0;34m[INFO][0m Test subset: train-clean-100
+
+[0;34m[INFO][0m To run inference on your own audio files, use:
+[0;34m[INFO][0m   python examples/inference_example.py
+[0;34m[INFO][0m   (Edit the script to point to your audio files)

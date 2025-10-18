@@ -1,0 +1,271 @@
+Wed Oct  8 04:27:46 PM PDT 2025
+🔍 Starting LaCT ASR Model Diagnostic
+Working directory: /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
+Virtual environment: /nfs/hpc/share/limjar/myVenv
+Wed Oct  8 16:27:46 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:1B:00.0 Off |                   On |
+| N/A   22C    P0             68W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA H100 80GB HBM3          On  |   00000000:43:00.0 Off |                   On |
+| N/A   26C    P0            116W /  700W |   37678MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA H100 80GB HBM3          On  |   00000000:52:00.0 Off |                   On |
+| N/A   43C    P0            304W /  700W |   73519MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA H100 80GB HBM3          On  |   00000000:61:00.0 Off |                   On |
+| N/A   24C    P0             68W /  700W |     101MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA H100 80GB HBM3          On  |   00000000:9D:00.0 Off |                   On |
+| N/A   48C    P0            472W /  700W |   54841MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA H100 80GB HBM3          On  |   00000000:C3:00.0 Off |                   On |
+| N/A   25C    P0            114W /  700W |     358MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA H100 80GB HBM3          On  |   00000000:D1:00.0 Off |                   On |
+| N/A   46C    P0            341W /  700W |   22794MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA H100 80GB HBM3          On  |   00000000:DF:00.0 Off |                   On |
+| N/A   41C    P0            123W /  700W |    1141MiB /  81559MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |              Shared Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                Shared BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  6    2   0   0  |              44MiB / 40448MiB    | 60      0 |  3   0    3    0    3 |
+|                  |               0MiB / 24740MiB    |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    1    2    0           572598      C   VLLM::DPEngineCore_0                  37568MiB |
+|    2    1    0           572599      C   VLLM::DPEngineCore_1                  37568MiB |
+|    2    2    0          3410289      C   python                                35832MiB |
+|    4    2    0           796342      C   ...ga2/conda-env/diff/bin/python      22666MiB |
+|    4    1    0          4130704      C   python                                32056MiB |
+|    5    2    0          4013974      C   python                                  248MiB |
+|    7    2    0           744951      C   ...a3/envs/hdc-env/bin/python3.9        520MiB |
+|    7    2    0           784889      C   ...a3/envs/hdc-env/bin/python3.9        506MiB |
++-----------------------------------------------------------------------------------------+
+
+[0;34m[INFO][0m LaCT ASR Model Diagnostic
+[0;34m[INFO][0m ==========================
+[0;34m[INFO][0m Testing model initialization and forward pass
+[0;34m[INFO][0m This will help identify NaN issues
+
+[0;34m[INFO][0m Checking Python environment...
+Python 3.10.16
+[0;34m[INFO][0m PyTorch version: 2.8.0+cu128
+[0;34m[INFO][0m CUDA available: True
+[0;34m[INFO][0m CUDA version: 12.8
+
+[0;34m[INFO][0m Checking required packages...
+[0;32m[SUCCESS][0m All required packages available
+
+[0;34m[INFO][0m Data directory: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+[0;34m[INFO][0m Subset: train-clean-100
+
+[0;34m[INFO][0m Running model diagnostic...
+
+==================================================
+[0;34m[INFO][0m Testing with both dummy and real data...
+Current Python version 3.10 is below the recommended 3.11 version. It is recommended to upgrade to Python 3.11 or higher for the best experience.
+torch.compile is not available in Python 3.10, using identity decorator instead
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/transforms/_transforms.py:581: UserWarning: Argument 'onesided' has been deprecated and has no influence on the behavior of this module.
+  warnings.warn(
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/data/asr_dataset.py:128: UserWarning: torchaudio._backend.utils.info has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  info = torchaudio.info(item['audio_filepath'])
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:20: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:27: UserWarning: torchaudio._backend.common.AudioMetaData has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  return AudioMetaData(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/utils.py:213: UserWarning: In 2.9, this function's implementation will be changed to use torchaudio.load_with_torchcodec` under the hood. Some parameters like ``normalize``, ``format``, ``buffer_size``, and ``backend`` will be ignored. We recommend that you port your code to rely directly on TorchCodec's decoder instead: https://docs.pytorch.org/torchcodec/stable/generated/torchcodec.decoders.AudioDecoder.html#torchcodec.decoders.AudioDecoder.
+  warnings.warn(
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/_backend/ffmpeg.py:88: UserWarning: torio.io._streaming_media_decoder.StreamingMediaDecoder has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  s = torchaudio.io.StreamReader(src, format, None, buffer_size)
+/nfs/hpc/share/limjar/myVenv/lib/python3.10/site-packages/torchaudio/transforms/_transforms.py:581: UserWarning: Argument 'onesided' has been deprecated and has no influence on the behavior of this module.
+  warnings.warn(
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/scripts/diagnose_model.py:406: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+/nfs/hpc/share/limjar/LaCT/lact_asr/lact_asr_model/layer_lact_asr.py:451: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+============================================================
+Model Initialization Diagnostic
+============================================================
+
+✓ Config created
+  Hidden size: 768
+  Num layers: 12
+  Vocab size: 32
+
+Initializing model...
+✓ Model created on device: cuda:0
+
+Checking model parameters...
+✓ Total parameters: 238
+✓ No NaN/Inf in model parameters
+
+Creating dummy input...
+✓ Dummy input created
+  Audio shape: torch.Size([2, 16000])
+  Labels shape: torch.Size([2, 20])
+  Input lengths: tensor([100, 100], device='cuda:0')
+  Label lengths: tensor([20, 20], device='cuda:0')
+
+Performing forward pass...
+✓ Forward pass completed
+  Loss: 13.5318
+  Logits shape: torch.Size([2, 101, 32])
+  Logits range: [-0.4989, 0.5288]
+
+✅ Model appears healthy!
+
+============================================================
+Testing with Real LibriSpeech Data
+============================================================
+
+Loading dataset from: /nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech
+Subset: train-clean-100
+✓ Dataset loaded: 28538 samples
+  Vocabulary size: 29
+  Vocabulary: ['<blank>', ' ', 'e', 't', 'a', 'o', 'n', 'i', 'h', 's', 'r', 'd', 'l', 'u', 'm', 'c', 'w', 'f', 'g', 'y', 'p', 'b', 'v', 'k', "'", 'x', 'j', 'q', 'z']
+
+  Character mapping:
+    0: '<blank>'
+    1: ' '
+    2: 'e'
+    3: 't'
+    4: 'a'
+    5: 'o'
+    6: 'n'
+    7: 'i'
+    8: 'h'
+    9: 's'
+    ... (19 more)
+
+Updating config vocab size from 32 to 29
+
+Getting first batch from dataset...
+✓ Batch loaded
+  Audio input shape: torch.Size([2, 220960])
+  Audio input range: [-0.6061, 0.6102]
+  Audio input mean: 0.0000
+  Audio input std: 0.0989
+  Input lengths: tensor([1341, 1381])
+  Label lengths: tensor([182, 214])
+  Labels shape: torch.Size([2, 214])
+  Labels min/max: [0, 27]
+  Unique labels in batch: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27]
+
+Creating model...
+✓ Model created
+  CTC head vocab size: 29
+  Dataset vocab size: 29
+
+Performing forward pass with real data (no loss)...
+✓ Model forward pass completed
+  Hidden states shape: torch.Size([2, 1382, 768])
+  Hidden states range: [-1.7582, 2.2290]
+  Hidden states mean: 0.3410
+  Hidden states std: 0.9401
+
+Applying CTC head...
+✓ CTC head applied
+  Logits shape: torch.Size([2, 1382, 29])
+  Logits range: [-0.6091, 0.6338]
+  Logits mean: 0.0303
+  Logits std: 0.1600
+
+Applying log_softmax...
+✓ Log softmax applied
+  Log probs range: [-4.0201, -2.7767]
+  Log probs mean: -3.3797
+
+Preparing CTC loss inputs...
+  Input lengths: [1341, 1381]
+  Label lengths: [182, 214]
+  Max input length: 1381
+  Sequence length: 1382
+✓ CTC constraints satisfied
+
+Transposing for CTC loss...
+  Transposed shape: torch.Size([1382, 2, 29])
+
+Computing CTC loss...
+✓ CTC loss computed
+  Loss value: 19.0034
+
+✅ Model works correctly with real data in eval mode!
+
+============================================================
+Testing in TRAINING MODE (FP32, no mixed precision)
+============================================================
+
+Performing forward pass in training mode (FP32)...
+✓ Training mode forward pass completed (FP32)
+  Hidden states shape: torch.Size([2, 1382, 768])
+  Hidden states range: [-1.3256, 5.8285]
+✓ Training mode works in FP32!
+
+============================================================
+Testing in TRAINING MODE with Mixed Precision (FP16)
+============================================================
+
+Performing forward pass in training mode with AMP...
+✓ Training mode forward pass completed (FP16)
+  Hidden states shape: torch.Size([2, 1382, 768])
+  Hidden states range: [nan, nan]
+
+❌ Hidden states contain NaN with mixed precision!
+   Mixed precision (FP16) causes NaN
+   FP32 works fine, so use training without --mixed_precision flag
+==================================================
+
+Wed Oct  8 04:30:22 PM PDT 2025
+[0;31m[ERROR][0m Model diagnostic FAILED!
+[0;31m[ERROR][0m The model produces NaN during initialization or forward pass
+[0;34m[INFO][0m This indicates a fundamental issue with:
+[0;34m[INFO][0m   - Model initialization (weights initialized to NaN/Inf)
+[0;34m[INFO][0m   - Architecture configuration (incompatible dimensions)
+[0;34m[INFO][0m   - TTT/LaCT layer implementation
+
+[0;34m[INFO][0m Recommended actions:
+[0;34m[INFO][0m   1. Check the diagnostic output above for which parameter has NaN
+[0;34m[INFO][0m   2. Try a smaller model configuration
+[0;34m[INFO][0m   3. Check if fla (flash-linear-attention) is properly installed
+[0;34m[INFO][0m   4. Review model initialization in modeling_lact_asr.py
