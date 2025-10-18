@@ -78,6 +78,7 @@ Examples:
   $0                                              # Evaluate on dev-clean and test-clean
   $0 -c ./checkpoints/my_model                   # Evaluate specific checkpoint
   $0 --test-sets "dev-clean"                     # Evaluate only on dev-clean
+  $0 dev-clean test-clean                        # Positional arguments for test sets
   $0 --beam-width 5                              # Use beam search decoding
   $0 --max-samples 500                           # Evaluate on first 500 samples
 
@@ -88,7 +89,7 @@ EOF
 CHECKPOINT_DIR="$DEFAULT_CHECKPOINT_DIR"
 DATA_DIR="$DEFAULT_DATA_DIR"
 OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
-TEST_SETS="dev-clean"
+TEST_SETS="dev-clean test-clean"
 BEAM_WIDTH=1
 MAX_SAMPLES=""
 
@@ -122,10 +123,28 @@ while [[ $# -gt 0 ]]; do
             show_usage
             exit 0
             ;;
-        *)
+        -*)
             print_error "Unknown option: $1"
             show_usage
             exit 1
+            ;;
+        *)
+            # Allow test set names as positional arguments
+            # Check if this is a valid test set name
+            case "$1" in
+                dev-clean|test-clean|train-clean-100|train-clean-360|train-other-500)
+                    # Add to test sets if not already present
+                    if [[ "$TEST_SETS" != *"$1"* ]]; then
+                        TEST_SETS="$TEST_SETS $1"
+                    fi
+                    ;;
+                *)
+                    print_error "Unknown test set: $1"
+                    print_error "Valid test sets: dev-clean, test-clean, train-clean-100, train-clean-360, train-other-500"
+                    exit 1
+                    ;;
+            esac
+            shift
             ;;
     esac
 done

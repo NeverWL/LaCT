@@ -63,9 +63,14 @@ while [[ $# -gt 0 ]]; do
             NUM_BATCHES="$2"
             shift 2
             ;;
-        *)
+        -*)
             echo "Unknown option: $1"
             exit 1
+            ;;
+        *)
+            # Allow test subset as positional argument
+            TEST_SUBSET="$1"
+            shift
             ;;
     esac
 done
