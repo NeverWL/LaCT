@@ -1,16 +1,15 @@
 {
   "model_type": "lact_asr",
+  "_comment": "Regularized model for better generalization on full LibriSpeech dataset",
   
-  "_comment": "Regularized configuration to prevent overfitting - smaller model with stronger regularization",
-  
-  "hidden_size": 640,              // Reduced from 1024 (d_model=640)
-  "num_hidden_layers": 12,         // Reduced from 18 (L=12)
-  "num_attn_heads": 8,             // Reduced from 16 (heads=8)
-  "num_lact_heads": 4,             // Reduced from 8
-  "intermediate_size": 2560,       // Reduced from 4096 (d_ff=2560)
+  "hidden_size": 640,
+  "num_hidden_layers": 12,
+  "num_attn_heads": 8,
+  "num_lact_heads": 4,
+  "intermediate_size": 2560,
   "hidden_ratio": null,
   
-  "vocab_size": 32,
+  "vocab_size": 29,
   "max_position_embeddings": 16384,
   
   "audio_feature_dim": 80,
@@ -20,11 +19,13 @@
   "n_mels": 80,
   "n_fft": 512,
   
-  "ctc_vocab_size": 32,
+  "ctc_vocab_size": 29,
   "use_ctc": true,
   "use_attention": false,
-  "audio_encoder_layers": 3,       // Keep 3 layers for good audio features
-  "audio_encoder_dropout": 0.25,   // INCREASED: Stronger regularization
+  "audio_encoder_layers": 3,
+  "audio_encoder_dropout": 0.25,
+  "hidden_dropout": 0.15,
+  "attention_dropout": 0.15,
   "ctc_blank_id": 0,
   
   "lact_chunk_size": 4096,
@@ -49,27 +50,6 @@
   "fuse_swiglu": true,
   "fuse_norm": true,
   "last_layer_fuse_norm": true,
-  
-  "_training_notes": {
-    "description": "Regularized configuration to prevent overfitting",
-    "architecture_changes": [
-      "Reduced hidden_size: 1024 -> 640 (d_model=640)",
-      "Reduced layers: 18 -> 12 (L=12)", 
-      "Reduced attention heads: 16 -> 8 (heads=8)",
-      "Reduced intermediate_size: 4096 -> 2560 (d_ff=2560)",
-      "Reduced LaCT heads: 8 -> 4"
-    ],
-    "regularization_improvements": [
-      "Increased audio_encoder_dropout: 0.15 -> 0.25",
-      "Smaller model size: ~150M parameters (vs 311M)",
-      "Better parameter-to-data ratio"
-    ],
-    "expected_improvements": [
-      "Reduced overfitting to training data",
-      "Better generalization to test-clean",
-      "More stable training dynamics",
-      "Faster training and inference"
-    ],
-    "parameter_estimate": "~150M parameters (vs 311M in improved config)"
-  }
+  "weight_decay": 0.01,
+  "use_spec_augment": true
 }
