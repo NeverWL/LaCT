@@ -215,13 +215,14 @@ class ASRTrainer:
                 # Validation
                 if self.val_dataloader and self.global_step % self.eval_steps == 0:
                     val_loss = self._validate()
-                    logger.info(f"Validation loss: {val_loss:.4f}")
                     
                     # Save best model
                     if val_loss < self.best_val_loss:
+                        prev_best = self.best_val_loss
                         self.best_val_loss = val_loss
                         self._save_checkpoint(is_best=True)
-                        logger.info(f"New best validation loss: {val_loss:.4f}")
+                        logger.info(f"🎯 New best validation loss: {val_loss:.4f} (improved from {prev_best:.4f})")
+                        logger.info(f"✅ Saved best model checkpoint!")
                 
                 # Test evaluation (monitoring only - not used for model selection)
                 if self.test_dataloader and self.global_step % self.test_eval_steps == 0:
@@ -374,9 +375,15 @@ class ASRTrainer:
         if not self.val_dataloader:
             return float('inf')
         
+        logger.info("=" * 60)
+        logger.info("📊 VALIDATION EVALUATION")
+        logger.info("=" * 60)
+        
         self.model.eval()
         total_loss = 0.0
         num_batches = 0
+        all_predictions = []
+        all_references = []
         
         with torch.no_grad():
             for batch in self.val_dataloader:
@@ -402,12 +409,58 @@ class ASRTrainer:
                     )
                     loss = outputs.loss
                 
-                total_loss += loss.item()
-                num_batches += 1
+                if loss is not None and not torch.isnan(loss) and not torch.isinf(loss):
+                    total_loss += loss.item()
+                    num_batches += 1
+                    
+                    # Collect predictions for sample analysis (first batch only)
+                    if num_batches == 1:
+                        logits = outputs.logits
+                        for i in range(min(3, len(batch['audio_input']))):  # Show first 3 samples
+                            # Get sample data
+                            sample_length = batch['input_lengths'][i].item()
+                            sample_logits = logits[i, :sample_length]
+                            
+                            # Greedy decode
+                            predictions = torch.argmax(sample_logits, dim=-1)
+                            pred_indices = predictions.cpu().tolist()
+                            
+                            # CTC decode - remove blanks and duplicates
+                            decoded = []
+                            prev = None
+                            for idx in pred_indices:
+                                if idx != 0 and idx != prev:
+                                    decoded.append(idx)
+                                prev = idx
+                            
+                            # Convert indices to readable text
+                            if hasattr(self.val_dataloader.dataset, 'idx_to_char'):
+                                pred_text = ''.join([self.val_dataloader.dataset.idx_to_char.get(idx, '?') for idx in decoded])
+                                all_predictions.append(pred_text)
+                            else:
+                                all_predictions.append(f"[indices: {decoded[:50]}{'...' if len(decoded) > 50 else ''}]")
+                            all_references.append(batch['texts'][i])
         
         self.model.train()
         avg_loss = total_loss / num_batches if num_batches > 0 else float('inf')
         self.val_losses.append(avg_loss)
+        
+        # Log validation results
+        logger.info(f"📈 Validation results:")
+        logger.info(f"  Average validation loss: {avg_loss:.4f}")
+        logger.info(f"  Best validation loss: {self.best_val_loss:.4f}")
+        logger.info(f"  Batches evaluated: {num_batches}")
+        
+        # Show sample predictions
+        if all_predictions:
+            logger.info(f"📝 Sample validation predictions:")
+            for i, (pred, ref) in enumerate(zip(all_predictions[:3], all_references[:3])):
+                logger.info(f"  Sample {i+1}:")
+                logger.info(f"    REF:  {ref}")
+                logger.info(f"    PRED: {pred}")
+        
+        logger.info("=" * 60)
+        
         return avg_loss
     
     def _evaluate_test_set(self) -> float:
