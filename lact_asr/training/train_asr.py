@@ -466,9 +466,12 @@ class ASRTrainer:
                                     decoded.append(idx)
                                 prev = idx
                             
-                            # Convert to text (assuming we have access to vocab)
-                            # For now, just store the indices
-                            all_predictions.append(decoded)
+                            # Convert indices to readable text
+                            if hasattr(self.test_dataloader.dataset, 'idx_to_char'):
+                                pred_text = ''.join([self.test_dataloader.dataset.idx_to_char.get(idx, '?') for idx in decoded])
+                                all_predictions.append(pred_text)
+                            else:
+                                all_predictions.append(f"[indices: {decoded[:50]}{'...' if len(decoded) > 50 else ''}]")
                             all_references.append(batch['texts'][i])
         
         self.model.train()
@@ -485,7 +488,7 @@ class ASRTrainer:
             for i, (pred, ref) in enumerate(zip(all_predictions[:3], all_references[:3])):
                 logger.info(f"  Sample {i+1}:")
                 logger.info(f"    REF:  {ref}")
-                logger.info(f"    PRED: [indices: {pred[:50]}{'...' if len(pred) > 50 else ''}]")
+                logger.info(f"    PRED: {pred}")
         
         logger.info("=" * 60)
         logger.info("✅ Test evaluation completed - continuing training...")
