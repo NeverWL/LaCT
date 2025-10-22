@@ -31,7 +31,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 cd /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
 
 # Default configuration
-DEFAULT_CHECKPOINT_DIR="./checkpoints/librispeech_base"
+DEFAULT_CHECKPOINT_DIR="./checkpoints"
 DEFAULT_DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech"
 DEFAULT_OUTPUT_DIR="./evaluation_results"
 
@@ -106,7 +106,10 @@ Computes WER, CER, and other metrics on test sets.
 
 Options:
   -c, --checkpoint-dir DIR    Directory containing trained model (default: $DEFAULT_CHECKPOINT_DIR)
-  -m, --checkpoint-file FILE  Specific checkpoint file to evaluate (e.g., checkpoint-step-5000.pt)
+  -m, --checkpoint-file FILE  Specific checkpoint to evaluate. Can be:
+                              - Just filename: checkpoint-step-5000.pt (uses -c dir)
+                              - Relative path: ./checkpoints/my_model/checkpoint-step-5000.pt
+                              - Absolute path: /full/path/to/checkpoint-step-5000.pt
                               If not specified, uses best_model.pt or latest_checkpoint.pt
   -d, --data-dir DIR          Directory with LibriSpeech dataset (default: $DEFAULT_DATA_DIR)
   -o, --output-dir DIR        Directory for evaluation results (default: $DEFAULT_OUTPUT_DIR)
@@ -117,15 +120,16 @@ Options:
   -h, --help                  Show this help message
 
 Examples:
-  $0                                              # Evaluate on dev-clean and test-clean
-  $0 -c ./checkpoints/my_model                   # Evaluate specific checkpoint directory
-  $0 -m checkpoint-step-5000.pt                  # Evaluate specific checkpoint file
-  $0 -c ./checkpoints/my_model -m checkpoint-step-10000.pt  # Specific dir and file
+  $0                                              # Evaluate best_model.pt from default dir
+  $0 -c ./checkpoints/my_model                   # Evaluate best from specific dir
+  $0 -m checkpoint-step-5000.pt                  # Evaluate specific file (uses default dir)
+  $0 -c ./checkpoints/my_model -m checkpoint-step-10000.pt  # Specific dir + file
+  $0 -m ./checkpoints/regularized/checkpoint-step-15000.pt  # Full relative path
+  $0 -m /nfs/stak/.../checkpoint-step-20000.pt   # Full absolute path
   $0 --test-sets "dev-clean"                     # Evaluate only on dev-clean
-  $0 dev-clean test-clean                        # Positional arguments for test sets
   $0 --beam-width 5                              # Use beam search decoding
   $0 --max-samples 500                           # Evaluate on first 500 samples
-  $0 --list-checkpoints                          # List available checkpoints
+  $0 --list-checkpoints -c ./checkpoints/regularized  # List checkpoints
 
 EOF
 }
@@ -223,16 +227,27 @@ print_status "Beam width: $BEAM_WIDTH"
 print_status "Max samples per set: ${MAX_SAMPLES:-all}"
 echo ""
 
-# Check if checkpoint exists
-if [[ ! -d "$CHECKPOINT_DIR" ]]; then
-    print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
-    exit 1
-fi
-
 # Determine which checkpoint file to use
 if [[ -n "$CHECKPOINT_FILE" ]]; then
     # User specified a checkpoint file
-    MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
+    # Check if it's an absolute path or contains directory separators
+    if [[ "$CHECKPOINT_FILE" == /* ]] || [[ "$CHECKPOINT_FILE" == */* ]]; then
+        # It's a full/relative path, use it as-is
+        MODEL_FILE="$CHECKPOINT_FILE"
+        # Update CHECKPOINT_DIR to the directory of this file
+        CHECKPOINT_DIR="$(dirname "$MODEL_FILE")"
+        CHECKPOINT_FILE="$(basename "$MODEL_FILE")"
+    else
+        # It's just a filename, combine with checkpoint dir
+        MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
+    fi
+    
+    # Check if checkpoint directory exists
+    if [[ ! -d "$CHECKPOINT_DIR" ]]; then
+        print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
+        exit 1
+    fi
+    
     if [[ ! -f "$MODEL_FILE" ]]; then
         print_error "Specified checkpoint file not found: $MODEL_FILE"
         print_status "Available checkpoints in $CHECKPOINT_DIR:"
@@ -241,6 +256,12 @@ if [[ -n "$CHECKPOINT_FILE" ]]; then
     fi
     print_success "Using specified checkpoint: $CHECKPOINT_FILE"
 else
+    # Check if checkpoint directory exists (for auto-select mode)
+    if [[ ! -d "$CHECKPOINT_DIR" ]]; then
+        print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
+        exit 1
+    fi
+    
     # Auto-select: best_model.pt > latest_checkpoint.pt > any checkpoint-step-*.pt
     MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
     if [[ ! -f "$MODEL_FILE" ]]; then
