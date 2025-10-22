@@ -58,6 +58,45 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+list_checkpoints() {
+    local checkpoint_dir="$1"
+    if [[ ! -d "$checkpoint_dir" ]]; then
+        print_error "Directory not found: $checkpoint_dir"
+        return 1
+    fi
+    
+    print_status "Available checkpoints in $checkpoint_dir:"
+    echo ""
+    
+    # Check for best model
+    if [[ -f "$checkpoint_dir/best_model.pt" ]]; then
+        local size=$(du -h "$checkpoint_dir/best_model.pt" | cut -f1)
+        local date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" "$checkpoint_dir/best_model.pt" 2>/dev/null || stat -c "%y" "$checkpoint_dir/best_model.pt" 2>/dev/null | cut -d' ' -f1,2)
+        echo "  ✓ best_model.pt (${size}, ${date})"
+    fi
+    
+    # Check for latest checkpoint
+    if [[ -f "$checkpoint_dir/latest_checkpoint.pt" ]]; then
+        local size=$(du -h "$checkpoint_dir/latest_checkpoint.pt" | cut -f1)
+        local date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" "$checkpoint_dir/latest_checkpoint.pt" 2>/dev/null || stat -c "%y" "$checkpoint_dir/latest_checkpoint.pt" 2>/dev/null | cut -d' ' -f1,2)
+        echo "  ✓ latest_checkpoint.pt (${size}, ${date})"
+    fi
+    
+    # List step checkpoints
+    local step_files=($(ls -t "$checkpoint_dir"/checkpoint-step-*.pt 2>/dev/null))
+    if [[ ${#step_files[@]} -gt 0 ]]; then
+        echo ""
+        echo "  Step checkpoints (most recent first):"
+        for file in "${step_files[@]}"; do
+            local basename=$(basename "$file")
+            local size=$(du -h "$file" | cut -f1)
+            local date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" "$file" 2>/dev/null || stat -c "%y" "$file" 2>/dev/null | cut -d' ' -f1,2)
+            echo "    - $basename (${size}, ${date})"
+        done
+    fi
+    echo ""
+}
+
 show_usage() {
     cat << EOF
 Usage: $0 [options]
@@ -67,26 +106,33 @@ Computes WER, CER, and other metrics on test sets.
 
 Options:
   -c, --checkpoint-dir DIR    Directory containing trained model (default: $DEFAULT_CHECKPOINT_DIR)
+  -m, --checkpoint-file FILE  Specific checkpoint file to evaluate (e.g., checkpoint-step-5000.pt)
+                              If not specified, uses best_model.pt or latest_checkpoint.pt
   -d, --data-dir DIR          Directory with LibriSpeech dataset (default: $DEFAULT_DATA_DIR)
   -o, --output-dir DIR        Directory for evaluation results (default: $DEFAULT_OUTPUT_DIR)
   --test-sets SETS            Space-separated test sets (default: "dev-clean test-clean")
   --beam-width WIDTH          Beam width for decoding (default: 1)
   --max-samples NUM           Max samples per test set (default: all)
+  --list-checkpoints          List available checkpoints in checkpoint directory and exit
   -h, --help                  Show this help message
 
 Examples:
   $0                                              # Evaluate on dev-clean and test-clean
-  $0 -c ./checkpoints/my_model                   # Evaluate specific checkpoint
+  $0 -c ./checkpoints/my_model                   # Evaluate specific checkpoint directory
+  $0 -m checkpoint-step-5000.pt                  # Evaluate specific checkpoint file
+  $0 -c ./checkpoints/my_model -m checkpoint-step-10000.pt  # Specific dir and file
   $0 --test-sets "dev-clean"                     # Evaluate only on dev-clean
   $0 dev-clean test-clean                        # Positional arguments for test sets
   $0 --beam-width 5                              # Use beam search decoding
   $0 --max-samples 500                           # Evaluate on first 500 samples
+  $0 --list-checkpoints                          # List available checkpoints
 
 EOF
 }
 
 # Parse arguments
 CHECKPOINT_DIR="$DEFAULT_CHECKPOINT_DIR"
+CHECKPOINT_FILE=""
 DATA_DIR="$DEFAULT_DATA_DIR"
 OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
 TEST_SETS="dev-clean test-clean"
@@ -97,6 +143,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -c|--checkpoint-dir)
             CHECKPOINT_DIR="$2"
+            shift 2
+            ;;
+        -m|--checkpoint-file)
+            CHECKPOINT_FILE="$2"
             shift 2
             ;;
         -d|--data-dir)
@@ -118,6 +168,10 @@ while [[ $# -gt 0 ]]; do
         --max-samples)
             MAX_SAMPLES="$2"
             shift 2
+            ;;
+        --list-checkpoints)
+            list_checkpoints "$CHECKPOINT_DIR"
+            exit 0
             ;;
         -h|--help)
             show_usage
@@ -159,6 +213,9 @@ echo ""
 print_status "LaCT ASR Model Evaluation"
 print_status "========================="
 print_status "Checkpoint directory: $CHECKPOINT_DIR"
+if [[ -n "$CHECKPOINT_FILE" ]]; then
+    print_status "Checkpoint file: $CHECKPOINT_FILE"
+fi
 print_status "Data directory: $DATA_DIR"
 print_status "Output directory: $OUTPUT_DIR"
 print_status "Test sets: $TEST_SETS"
@@ -172,14 +229,39 @@ if [[ ! -d "$CHECKPOINT_DIR" ]]; then
     exit 1
 fi
 
-MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
-if [[ ! -f "$MODEL_FILE" ]]; then
-    MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
+# Determine which checkpoint file to use
+if [[ -n "$CHECKPOINT_FILE" ]]; then
+    # User specified a checkpoint file
+    MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
     if [[ ! -f "$MODEL_FILE" ]]; then
-        print_error "No model checkpoint found in $CHECKPOINT_DIR"
+        print_error "Specified checkpoint file not found: $MODEL_FILE"
+        print_status "Available checkpoints in $CHECKPOINT_DIR:"
+        ls -lh "$CHECKPOINT_DIR"/*.pt 2>/dev/null || echo "  No .pt files found"
         exit 1
     fi
-    print_warning "Using latest_checkpoint.pt (best_model.pt not found)"
+    print_success "Using specified checkpoint: $CHECKPOINT_FILE"
+else
+    # Auto-select: best_model.pt > latest_checkpoint.pt > any checkpoint-step-*.pt
+    MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
+    if [[ ! -f "$MODEL_FILE" ]]; then
+        MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
+        if [[ ! -f "$MODEL_FILE" ]]; then
+            # Try to find any checkpoint-step-*.pt file
+            STEP_CHECKPOINTS=($(ls -t "$CHECKPOINT_DIR"/checkpoint-step-*.pt 2>/dev/null))
+            if [[ ${#STEP_CHECKPOINTS[@]} -gt 0 ]]; then
+                MODEL_FILE="${STEP_CHECKPOINTS[0]}"
+                print_warning "Using most recent step checkpoint: $(basename $MODEL_FILE)"
+            else
+                print_error "No model checkpoint found in $CHECKPOINT_DIR"
+                print_status "Expected files: best_model.pt, latest_checkpoint.pt, or checkpoint-step-*.pt"
+                exit 1
+            fi
+        else
+            print_warning "Using latest_checkpoint.pt (best_model.pt not found)"
+        fi
+    else
+        print_success "Using best_model.pt"
+    fi
 fi
 
 CONFIG_FILE="$CHECKPOINT_DIR/config.json"
@@ -188,8 +270,15 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     exit 1
 fi
 
-print_success "Found checkpoint: $MODEL_FILE"
-print_success "Found config: $CONFIG_FILE"
+print_success "Using checkpoint: $(basename $MODEL_FILE)"
+print_success "Full path: $MODEL_FILE"
+print_success "Config: $CONFIG_FILE"
+
+# Show checkpoint info if available
+if [[ -f "$MODEL_FILE" ]]; then
+    CHECKPOINT_SIZE=$(du -h "$MODEL_FILE" | cut -f1)
+    print_status "Checkpoint size: $CHECKPOINT_SIZE"
+fi
 echo ""
 
 # Create output directory
