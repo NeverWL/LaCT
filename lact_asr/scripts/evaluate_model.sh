@@ -362,6 +362,18 @@ print(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
 # Evaluation results storage
 all_results = {}
 
+# Create a reference dataset to get the training vocabulary
+print(f"\nLoading training vocabulary...")
+train_dataset = LibriSpeechDataset(
+    root_dir="$DATA_DIR",
+    subset="train-clean-360",  # Use the same training set as the model
+    sample_rate=config.sample_rate,
+    max_duration=30.0,
+    normalize_text=True,
+)
+print(f"✓ Training vocabulary loaded: {len(train_dataset.vocab)} characters")
+print(f"  Vocabulary: {train_dataset.vocab}")
+
 # Evaluate on each test set
 test_sets = "$TEST_SETS".split()
 
@@ -378,6 +390,14 @@ for test_set in test_sets:
         max_duration=30.0,
         normalize_text=True,
     )
+    
+    # CRITICAL: Use the same vocabulary as training
+    original_vocab_size = len(test_dataset.vocab)
+    test_dataset.vocab = train_dataset.vocab
+    test_dataset.char_to_idx = train_dataset.char_to_idx
+    test_dataset.idx_to_char = train_dataset.idx_to_char
+    print(f"✓ Using training vocabulary for {test_set}")
+    print(f"  Original vocab size: {original_vocab_size} → Training vocab size: {len(train_dataset.vocab)}")
     
     print(f"✓ Test dataset loaded: {len(test_dataset)} samples")
     
