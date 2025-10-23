@@ -31,7 +31,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 cd /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
 
 # Default configuration
-DEFAULT_CHECKPOINT_DIR="./checkpoints"
+DEFAULT_CHECKPOINT_DIR="./checkpoints/librispeech_base"
 DEFAULT_DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT/LibriSpeech"
 DEFAULT_OUTPUT_DIR="./evaluation_results"
 
