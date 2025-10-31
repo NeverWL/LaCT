@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
-This file is deprecated. It does not use the new CTC decoder with KenLM support. Use asr_ctc_decoder.py instead.
-
-It is kept here for reference only.
+ASR Inference with CTC Beam Search Decoder using torchaudio's decoder.
+Integrates KenLM for language model support following torchaudio's tutorial.
 """
 
 import os
@@ -19,6 +17,7 @@ import warnings
 import torch
 import torch.nn.functional as F
 import torchaudio
+from torchaudio.models.decoder import ctc_decoder, download_pretrained_files
 import numpy as np
 from jiwer import wer, cer
 
@@ -28,8 +27,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 from lact_asr_model import (
     LaCTASRConfig, 
     LaCTASRForCTC, 
-    AudioFeatureExtractor,
-    MelSpectrogramExtractor
 )
 from data import ASRDataset, ASRDataCollator, create_asr_dataloader
 
@@ -41,21 +38,58 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class ASRInference:
+class ASRCTCInference:
     """
-    Inference class for LaCT ASR models.
+    Inference class for LaCT ASR models with torchaudio's CTC decoder.
+    Supports KenLM language model and lexicon-constrained decoding.
     """
     
     def __init__(
         self,
         model_path: str,
         config_path: Optional[str] = None,
-        vocab_path: Optional[str] = None,
         device: str = 'cuda',
-        beam_width: int = 1,
+        # CTC decoder parameters
+        tokens: Optional[List[str]] = None,
+        lexicon: Optional[str] = None,
+        lm: Optional[str] = None,
+        nbest: int = 3,
+        beam_size: int = 1500,
+        beam_size_token: Optional[int] = None,
+        beam_threshold: int = 25,
+        lm_weight: float = 3.23,
+        word_score: float = -0.26,
+        unk_score: float = float('-inf'),
+        sil_score: float = 0.0,
+        log_add: bool = False,
+        blank_token: str = "-",
+        # Use pretrained LibriSpeech files if available
+        use_pretrained_librispeech: bool = True,
     ):
+        """
+        Initialize ASR CTC inference with decoder.
+        
+        Args:
+            model_path: Path to trained model checkpoint
+            config_path: Path to model config file
+            device: Device for inference
+            tokens: List of tokens (characters) the model predicts
+            lexicon: Path to lexicon file (word -> tokens mapping)
+            lm: Path to KenLM language model (.arpa or .bin)
+            nbest: Number of best hypotheses to return
+            beam_size: Beam size for decoding
+            beam_size_token: Number of tokens to consider per hypothesis
+            beam_threshold: Pruning threshold for beam search
+            lm_weight: Weight for language model score
+            word_score: Score added when finishing a word
+            unk_score: Score for unknown words
+            sil_score: Score for silence tokens
+            log_add: Use log add for lexicon Trie smearing
+            blank_token: CTC blank token character
+            use_pretrained_librispeech: Automatically download LibriSpeech decoder files if available
+        """
         self.device = device
-        self.beam_width = beam_width
+        self.blank_token = blank_token
         
         # Load config
         if config_path and os.path.exists(config_path):
@@ -75,46 +109,77 @@ class ASRInference:
         
         # Load model
         self.model = LaCTASRForCTC(self.config)
-        
-        # Load checkpoint
         checkpoint = torch.load(model_path, map_location=device)
         if 'model_state_dict' in checkpoint:
             self.model.load_state_dict(checkpoint['model_state_dict'])
         else:
             self.model.load_state_dict(checkpoint)
-        
         self.model.to(device)
         self.model.eval()
-        
-        # Load vocabulary
-        self.vocab = None
-        self.char_to_idx = None
-        self.idx_to_char = None
-        
-        if vocab_path and os.path.exists(vocab_path):
-            self._load_vocab(vocab_path)
-        else:
-            logger.warning("No vocabulary file provided. Text decoding will return token indices.")
         
         logger.info(f"Model loaded from {model_path}")
         logger.info(f"Device: {device}")
         logger.info(f"Vocabulary size: {self.config.ctc_vocab_size}")
-    
-    def _load_vocab(self, vocab_path: str):
-        """Load vocabulary from file."""
-        with open(vocab_path, 'r', encoding='utf-8') as f:
-            self.vocab = [line.strip() for line in f if line.strip()]
         
-        self.char_to_idx = {char: idx for idx, char in enumerate(self.vocab)}
-        self.idx_to_char = {idx: char for idx, char in enumerate(self.vocab)}
+        # Setup decoder parameters
+        if use_pretrained_librispeech and tokens is None:
+            # Try to download pretrained files
+            try:
+                logger.info("Attempting to download pretrained LibriSpeech decoder files...")
+                files = download_pretrained_files("librispeech-4-gram")
+                tokens = files.tokens
+                if lexicon is None:
+                    lexicon = files.lexicon
+                if lm is None:
+                    lm = files.lm
+                logger.info("✓ Using pretrained LibriSpeech decoder files")
+            except Exception as e:
+                logger.warning(f"Could not download pretrained files: {e}")
+                if tokens is None:
+                    raise ValueError("Must provide tokens or enable use_pretrained_librispeech with internet access")
         
-        logger.info(f"Loaded vocabulary with {len(self.vocab)} characters")
+        if tokens is None:
+            raise ValueError("Must provide tokens list")
+        
+        # Create CTC decoder
+        decoder_kwargs = {
+            'tokens': tokens,
+            'nbest': nbest,
+            'beam_size': beam_size,
+            'beam_threshold': beam_threshold,
+            'lm_weight': lm_weight,
+            'word_score': word_score,
+            'unk_score': unk_score,
+            'sil_score': sil_score,
+            'log_add': log_add,
+        }
+        
+        if lexicon:
+            decoder_kwargs['lexicon'] = lexicon
+            logger.info(f"Lexicon: {lexicon}")
+        
+        if lm:
+            decoder_kwargs['lm'] = lm
+            logger.info(f"Language Model: {lm}")
+        else:
+            logger.info("No language model provided - using CTC only")
+        
+        if beam_size_token is not None:
+            decoder_kwargs['beam_size_token'] = beam_size_token
+        
+        self.decoder = ctc_decoder(**decoder_kwargs)
+        
+        logger.info(f"CTC Decoder initialized:")
+        logger.info(f"  Beam size: {beam_size}")
+        logger.info(f"  LM weight: {lm_weight}")
+        logger.info(f"  Word score: {word_score}")
+        logger.info(f"  N-best: {nbest}")
     
     def transcribe_file(
         self, 
         audio_path: str, 
         sample_rate: Optional[int] = None
-    ) -> Dict[str, Union[str, List[int], float]]:
+    ) -> Dict[str, Union[str, List[str], float]]:
         """
         Transcribe a single audio file.
         
@@ -144,7 +209,7 @@ class ASRInference:
     def transcribe_audio(
         self, 
         waveform: torch.Tensor
-    ) -> Dict[str, Union[str, List[int], float]]:
+    ) -> Dict[str, Union[str, List[str], float]]:
         """
         Transcribe audio waveform.
         
@@ -161,39 +226,32 @@ class ASRInference:
         with torch.no_grad():
             outputs = self.model(audio_input=audio_input)
             logits = outputs.logits  # [batch, time, vocab]
-            log_probs = F.log_softmax(logits, dim=-1)
+            emission = torch.log_softmax(logits, dim=-1)
         
-        # Decode
-        if self.beam_width == 1:
-            # Greedy decoding
-            predicted_ids = torch.argmax(log_probs, dim=-1)
-            confidence_scores = torch.max(F.softmax(logits, dim=-1), dim=-1)[0]
-            avg_confidence = confidence_scores.mean().item()
+        # Decode with CTC decoder
+        hypotheses = self.decoder(emission)
+        
+        # Get best hypothesis
+        if hypotheses[0]:
+            best_hyp = hypotheses[0][0]
+            transcript = " ".join(best_hyp.words).strip()
+            all_nbest = [" ".join(hyp.words).strip() for hyp in hypotheses[0]]
         else:
-            # Beam search decoding (simplified implementation)
-            predicted_ids, avg_confidence = self._beam_search_decode(log_probs)
-        
-        # CTC decoding - remove blanks and consecutive duplicates
-        decoded_ids = self._ctc_decode(predicted_ids.squeeze(0).cpu().numpy())
-        
-        # Convert to text if vocabulary is available
-        if self.vocab:
-            text = self._ids_to_text(decoded_ids)
-        else:
-            text = None
+            transcript = ""
+            all_nbest = []
         
         return {
-            'text': text,
-            'token_ids': decoded_ids,
-            'confidence': avg_confidence,
-            'audio_length': waveform.shape[0] / self.config.sample_rate
+            'text': transcript,
+            'nbest': all_nbest,
+            'score': best_hyp.score if hypotheses[0] else 0.0,
+            'audio_length': waveform.shape[0] / self.config.sample_rate,
         }
     
     def transcribe_batch(
         self, 
         audio_paths: List[str],
         batch_size: int = 8
-    ) -> List[Dict[str, Union[str, List[int], float]]]:
+    ) -> List[Dict[str, Union[str, List[str], float]]]:
         """
         Transcribe multiple audio files in batches.
         
@@ -255,122 +313,47 @@ class ASRInference:
                     input_lengths=input_lengths
                 )
                 logits = outputs.logits
-                log_probs = F.log_softmax(logits, dim=-1)
             
-            # Decode each sample in the batch
+            # Decode each sample individually (CTC decoder expects full emissions)
             for j, (path, length) in enumerate(zip(batch_paths, batch_lengths)):
-                sample_logits = logits[j, :length // (self.config.hop_length or 160)]
-                sample_log_probs = log_probs[j, :length // (self.config.hop_length or 160)]
+                # Get emission for this sample
+                sample_logits = logits[j]
+                emission = torch.log_softmax(sample_logits.unsqueeze(0), dim=-1)
                 
-                if self.beam_width == 1:
-                    predicted_ids = torch.argmax(sample_log_probs, dim=-1)
-                    confidence_scores = torch.max(F.softmax(sample_logits, dim=-1), dim=-1)[0]
-                    avg_confidence = confidence_scores.mean().item()
+                # Decode
+                hypotheses = self.decoder(emission)
+                
+                if hypotheses[0]:
+                    best_hyp = hypotheses[0][0]
+                    transcript = " ".join(best_hyp.words).strip()
+                    all_nbest = [" ".join(hyp.words).strip() for hyp in hypotheses[0]]
+                    score = best_hyp.score
                 else:
-                    predicted_ids, avg_confidence = self._beam_search_decode(sample_log_probs.unsqueeze(0))
-                    predicted_ids = predicted_ids.squeeze(0)
-                
-                # CTC decode
-                decoded_ids = self._ctc_decode(predicted_ids.cpu().numpy())
-                
-                # Convert to text
-                if self.vocab:
-                    text = self._ids_to_text(decoded_ids)
-                else:
-                    text = None
+                    transcript = ""
+                    all_nbest = []
+                    score = 0.0
                 
                 results.append({
-                    'text': text,
-                    'token_ids': decoded_ids,
-                    'confidence': avg_confidence,
+                    'text': transcript,
+                    'nbest': all_nbest,
+                    'score': score,
                     'audio_length': length / self.config.sample_rate,
                     'audio_path': path
                 })
         
         return results
-    
-    def _ctc_decode(self, predictions: np.ndarray) -> List[int]:
-        """
-        CTC decoding - remove blanks and consecutive duplicates.
-        
-        Args:
-            predictions: Array of predicted token IDs
-            
-        Returns:
-            List of decoded token IDs
-        """
-        decoded = []
-        prev = None
-        
-        for pred in predictions:
-            if pred != 0 and pred != prev:  # 0 is blank token
-                decoded.append(int(pred))
-            prev = pred
-        
-        return decoded
-    
-    def _ids_to_text(self, token_ids: List[int]) -> str:
-        """Convert token IDs to text string."""
-        if not self.idx_to_char:
-            return str(token_ids)
-        
-        chars = []
-        for token_id in token_ids:
-            if token_id in self.idx_to_char:
-                chars.append(self.idx_to_char[token_id])
-        
-        return ''.join(chars)
-    
-    def _beam_search_decode(
-        self, 
-        log_probs: torch.Tensor, 
-        beam_width: Optional[int] = None
-    ) -> tuple[torch.Tensor, float]:
-        """
-        Simple beam search decoding for CTC.
-        
-        Args:
-            log_probs: Log probabilities [batch, time, vocab]
-            beam_width: Beam width (uses self.beam_width if None)
-            
-        Returns:
-            Tuple of (predicted_ids, average_confidence)
-        """
-        if beam_width is None:
-            beam_width = self.beam_width
-        
-        batch_size, seq_len, vocab_size = log_probs.shape
-        
-        # For simplicity, this is a basic implementation
-        # In practice, you'd want a more sophisticated beam search for CTC
-        
-        # For now, fall back to greedy decoding
-        predicted_ids = torch.argmax(log_probs, dim=-1)
-        probs = F.softmax(log_probs, dim=-1)
-        confidence_scores = torch.max(probs, dim=-1)[0]
-        avg_confidence = confidence_scores.mean().item()
-        
-        return predicted_ids, avg_confidence
 
 
-class ASREvaluator:
+class ASRCTCEvaluator:
     """
-    Evaluator for ASR models that computes WER and CER metrics.
+    Evaluator for ASR models using CTC decoder with WER/CER metrics.
     """
     
     def __init__(
         self,
-        model_path: str,
-        config_path: Optional[str] = None,
-        vocab_path: Optional[str] = None,
-        device: str = 'cuda',
+        inference: ASRCTCInference,
     ):
-        self.inference = ASRInference(
-            model_path=model_path,
-            config_path=config_path,
-            vocab_path=vocab_path,
-            device=device
-        )
+        self.inference = inference
     
     def evaluate_dataset(
         self,
@@ -390,7 +373,7 @@ class ASREvaluator:
             Dictionary of evaluation metrics
         """
         # Create dataloader
-        collator = ASRDataCollator(pad_token_id=0)
+        collator = ASRDataCollator(hop_length=self.inference.config.hop_length)
         dataloader = create_asr_dataloader(
             test_dataset,
             batch_size=batch_size,
@@ -422,28 +405,26 @@ class ASREvaluator:
                     input_lengths=batch['input_lengths']
                 )
                 logits = outputs.logits
-                log_probs = F.log_softmax(logits, dim=-1)
             
-            # Decode predictions for each sample in batch
+            # Decode each sample
             for i in range(len(batch['audio_input'])):
                 if max_samples and num_processed >= max_samples:
                     break
                 
-                # Get sample-specific data
-                sample_length = batch['input_lengths'][i].item()
-                sample_log_probs = log_probs[i, :sample_length]
+                # Get sample emission
+                sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
+                emission = torch.log_softmax(sample_logits, dim=-1)
                 
-                # Decode prediction
-                predicted_ids = torch.argmax(sample_log_probs, dim=-1)
-                decoded_ids = self.inference._ctc_decode(predicted_ids.cpu().numpy())
+                # Decode with CTC decoder
+                hypotheses = self.inference.decoder(emission)
                 
-                if self.inference.vocab:
-                    pred_text = self.inference._ids_to_text(decoded_ids)
+                if hypotheses[0]:
+                    pred_text = " ".join(hypotheses[0][0].words).strip().lower()
                 else:
-                    pred_text = ' '.join(map(str, decoded_ids))
+                    pred_text = ""
                 
                 # Get reference text
-                ref_text = batch['texts'][i]
+                ref_text = batch['texts'][i].lower()
                 
                 predictions.append(pred_text)
                 references.append(ref_text)
@@ -456,46 +437,6 @@ class ASREvaluator:
             
             if (batch_idx + 1) % 10 == 0:
                 logger.info(f"Processed {num_processed} samples...")
-        
-        # Compute metrics
-        metrics = self._compute_metrics(predictions, references)
-        metrics['total_audio_duration'] = total_audio_duration
-        metrics['num_samples'] = len(predictions)
-        metrics['rtf'] = 0.0  # Real-time factor (would need timing info)
-        
-        return metrics
-    
-    def evaluate_files(
-        self,
-        audio_files: List[str],
-        reference_texts: List[str],
-        batch_size: int = 8
-    ) -> Dict[str, float]:
-        """
-        Evaluate model on a list of audio files with reference transcripts.
-        
-        Args:
-            audio_files: List of paths to audio files
-            reference_texts: List of reference transcripts
-            batch_size: Batch size for processing
-            
-        Returns:
-            Dictionary of evaluation metrics
-        """
-        assert len(audio_files) == len(reference_texts), "Number of audio files and references must match"
-        
-        logger.info(f"Evaluating on {len(audio_files)} files...")
-        
-        # Get predictions
-        results = self.inference.transcribe_batch(audio_files, batch_size)
-        
-        predictions = []
-        references = reference_texts
-        total_audio_duration = sum(r['audio_length'] for r in results)
-        
-        for result in results:
-            pred_text = result['text'] or ' '.join(map(str, result['token_ids']))
-            predictions.append(pred_text)
         
         # Compute metrics
         metrics = self._compute_metrics(predictions, references)
@@ -536,26 +477,35 @@ class ASREvaluator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ASR Inference and Evaluation")
+    parser = argparse.ArgumentParser(description="ASR CTC Inference and Evaluation")
     
     # Model arguments
     parser.add_argument("--model_path", type=str, required=True, help="Path to trained model checkpoint")
     parser.add_argument("--config_path", type=str, help="Path to model config file")
-    parser.add_argument("--vocab_path", type=str, help="Path to vocabulary file")
+    
+    # Decoder arguments
+    parser.add_argument("--tokens", type=str, help="Path to tokens file or comma-separated list")
+    parser.add_argument("--lexicon", type=str, help="Path to lexicon file")
+    parser.add_argument("--lm", type=str, help="Path to KenLM language model")
+    parser.add_argument("--use_pretrained_librispeech", action="store_true", 
+                       help="Use pretrained LibriSpeech decoder files")
+    parser.add_argument("--beam_size", type=int, default=1500, help="Beam size for decoding")
+    parser.add_argument("--beam_size_token", type=int, help="Number of tokens to consider per hypothesis")
+    parser.add_argument("--beam_threshold", type=int, default=25, help="Beam threshold")
+    parser.add_argument("--lm_weight", type=float, default=3.23, help="LM weight")
+    parser.add_argument("--word_score", type=float, default=-0.26, help="Word score")
+    parser.add_argument("--nbest", type=int, default=3, help="Number of best hypotheses")
     
     # Inference arguments
     parser.add_argument("--mode", type=str, choices=["transcribe", "evaluate"], default="transcribe",
                        help="Mode: transcribe audio files or evaluate on dataset")
     parser.add_argument("--audio_file", type=str, help="Single audio file to transcribe")
-    parser.add_argument("--audio_dir", type=str, help="Directory containing audio files to transcribe")
+    parser.add_argument("--audio_dir", type=str, help="Directory containing audio files")
     parser.add_argument("--output_file", type=str, help="Output file for transcriptions")
-    parser.add_argument("--beam_width", type=int, default=1, help="Beam width for decoding")
     
     # Evaluation arguments
     parser.add_argument("--test_manifest", type=str, help="Test manifest file for evaluation")
-    parser.add_argument("--test_dataset_type", type=str, choices=["generic", "librispeech", "commonvoice"],
-                       default="generic", help="Type of test dataset")
-    parser.add_argument("--test_data_dir", type=str, help="Test dataset directory")
+    parser.add_argument("--test_data_dir", type=str, help="Test dataset directory (LibriSpeech)")
     parser.add_argument("--test_subset", type=str, help="Test subset (for LibriSpeech)")
     parser.add_argument("--max_eval_samples", type=int, help="Maximum samples for evaluation")
     
@@ -570,21 +520,38 @@ def main():
         logger.warning("CUDA not available, using CPU")
         args.device = "cpu"
     
+    # Parse tokens if provided as file or comma-separated
+    tokens = None
+    if args.tokens:
+        if os.path.exists(args.tokens):
+            with open(args.tokens, 'r') as f:
+                tokens = [line.strip() for line in f if line.strip()]
+        else:
+            tokens = [t.strip() for t in args.tokens.split(',')]
+    
+    # Initialize inference
+    inference = ASRCTCInference(
+        model_path=args.model_path,
+        config_path=args.config_path,
+        device=args.device,
+        tokens=tokens,
+        lexicon=args.lexicon,
+        lm=args.lm,
+        beam_size=args.beam_size,
+        beam_size_token=args.beam_size_token,
+        beam_threshold=args.beam_threshold,
+        lm_weight=args.lm_weight,
+        word_score=args.word_score,
+        nbest=args.nbest,
+        use_pretrained_librispeech=args.use_pretrained_librispeech,
+    )
+    
     if args.mode == "transcribe":
-        # Initialize inference
-        inference = ASRInference(
-            model_path=args.model_path,
-            config_path=args.config_path,
-            vocab_path=args.vocab_path,
-            device=args.device,
-            beam_width=args.beam_width
-        )
-        
         if args.audio_file:
             # Transcribe single file
             result = inference.transcribe_file(args.audio_file)
             print(f"Transcription: {result['text']}")
-            print(f"Confidence: {result['confidence']:.3f}")
+            print(f"Score: {result['score']:.2f}")
             
         elif args.audio_dir:
             # Transcribe directory
@@ -609,25 +576,18 @@ def main():
             else:
                 for result in results:
                     print(f"{result['audio_path']}: {result['text']}")
-        
         else:
             logger.error("Please provide --audio_file or --audio_dir for transcription")
     
     elif args.mode == "evaluate":
         # Initialize evaluator
-        evaluator = ASREvaluator(
-            model_path=args.model_path,
-            config_path=args.config_path,
-            vocab_path=args.vocab_path,
-            device=args.device
-        )
+        evaluator = ASRCTCEvaluator(inference)
         
         if args.test_manifest:
             # Evaluate on manifest
             test_dataset = ASRDataset(
                 manifest_path=args.test_manifest,
-                vocab_path=args.vocab_path,
-                sample_rate=evaluator.inference.config.sample_rate,
+                sample_rate=inference.config.sample_rate,
                 normalize_text=True
             )
             
@@ -637,8 +597,24 @@ def main():
                 max_samples=args.max_eval_samples
             )
             
+        elif args.test_data_dir and args.test_subset:
+            # Evaluate on LibriSpeech
+            from data import LibriSpeechDataset
+            test_dataset = LibriSpeechDataset(
+                root_dir=args.test_data_dir,
+                subset=args.test_subset,
+                sample_rate=inference.config.sample_rate,
+                max_duration=30.0,
+                normalize_text=True,
+            )
+            
+            metrics = evaluator.evaluate_dataset(
+                test_dataset,
+                batch_size=args.batch_size,
+                max_samples=args.max_eval_samples
+            )
         else:
-            logger.error("Please provide --test_manifest for evaluation")
+            logger.error("Please provide --test_manifest or --test_data_dir and --test_subset")
             return
         
         # Print results
@@ -651,3 +627,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

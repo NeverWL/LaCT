@@ -442,7 +442,18 @@ def main():
     print(f"    - Chunk size: {config.lact_chunk_size:,}")
     print(f"    - Window size: {config.window_size:,}")
     
-    # Load dataset
+    # Load training dataset first to get the correct vocabulary
+    print(f"\nLoading training vocabulary...")
+    train_dataset = LibriSpeechDataset(
+        root_dir=args.data_dir,
+        subset="train-clean-360",  # Use the same training set as the model
+        sample_rate=config.sample_rate,
+        max_duration=30.0,
+        normalize_text=True
+    )
+    print(f"✓ Training vocabulary loaded: {len(train_dataset.vocab)} characters")
+    
+    # Load test dataset
     print(f"\nLoading test dataset: {args.test_subset}")
     dataset = LibriSpeechDataset(
         root_dir=args.data_dir,
@@ -451,6 +462,14 @@ def main():
         max_duration=30.0,
         normalize_text=True
     )
+    
+    # CRITICAL: Use the same vocabulary as training
+    original_vocab_size = len(dataset.vocab)
+    dataset.vocab = train_dataset.vocab
+    dataset.char_to_idx = train_dataset.char_to_idx
+    dataset.idx_to_char = train_dataset.idx_to_char
+    print(f"✓ Using training vocabulary for {args.test_subset}")
+    print(f"  Original vocab size: {original_vocab_size} → Training vocab size: {len(train_dataset.vocab)}")
     
     collator = ASRDataCollator(hop_length=config.hop_length)
     dataloader = create_asr_dataloader(

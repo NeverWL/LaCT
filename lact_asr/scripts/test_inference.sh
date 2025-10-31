@@ -221,6 +221,17 @@ print(f"✓ Model loaded from $MODEL_FILE")
 print(f"  Config: hidden_size={config.hidden_size}, layers={config.num_hidden_layers}")
 print(f"  Vocab size: {config.ctc_vocab_size}")
 
+# Load training dataset first to get the correct vocabulary
+print(f"\nLoading training vocabulary...")
+train_dataset = LibriSpeechDataset(
+    root_dir="$DATA_DIR",
+    subset="train-clean-360",  # Use the same training set as the model
+    sample_rate=config.sample_rate,
+    max_duration=20.0,
+    normalize_text=True,
+)
+print(f"✓ Training vocabulary loaded: {len(train_dataset.vocab)} characters")
+
 # Load test dataset
 print(f"\nLoading test dataset: $TEST_SUBSET")
 test_dataset = LibriSpeechDataset(
@@ -230,6 +241,14 @@ test_dataset = LibriSpeechDataset(
     max_duration=20.0,
     normalize_text=True,
 )
+
+# CRITICAL: Use the same vocabulary as training
+original_vocab_size = len(test_dataset.vocab)
+test_dataset.vocab = train_dataset.vocab
+test_dataset.char_to_idx = train_dataset.char_to_idx
+test_dataset.idx_to_char = train_dataset.idx_to_char
+print(f"✓ Using training vocabulary for $TEST_SUBSET")
+print(f"  Original vocab size: {original_vocab_size} → Training vocab size: {len(train_dataset.vocab)}")
 
 print(f"✓ Test dataset loaded: {len(test_dataset)} samples")
 

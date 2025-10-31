@@ -144,13 +144,31 @@ def test_with_real_data(data_dir: str, subset: str = "train-clean-100"):
     print(f"Subset: {subset}")
     
     try:
-        # Create dataset
+        # Load training dataset first to get the correct vocabulary
+        print(f"\nLoading training vocabulary...")
+        train_dataset = LibriSpeechDataset(
+            root_dir=data_dir,
+            subset="train-clean-360",  # Use the same training set as the model
+            max_duration=20.0,
+            min_duration=0.5
+        )
+        print(f"✓ Training vocabulary loaded: {len(train_dataset.vocab)} characters")
+        
+        # Create test dataset
         dataset = LibriSpeechDataset(
             root_dir=data_dir,
             subset=subset,
             max_duration=20.0,
             min_duration=0.5
         )
+        
+        # CRITICAL: Use the same vocabulary as training
+        original_vocab_size = len(dataset.vocab)
+        dataset.vocab = train_dataset.vocab
+        dataset.char_to_idx = train_dataset.char_to_idx
+        dataset.idx_to_char = train_dataset.idx_to_char
+        print(f"✓ Using training vocabulary for {subset}")
+        print(f"  Original vocab size: {original_vocab_size} → Training vocab size: {len(train_dataset.vocab)}")
         
         print(f"✓ Dataset loaded: {len(dataset)} samples")
         print(f"  Vocabulary size: {len(dataset.vocab)}")
