@@ -228,6 +228,9 @@ class ASRCTCInference:
             logits = outputs.logits  # [batch, time, vocab]
             emission = torch.log_softmax(logits, dim=-1)
         
+        # Move emission to CPU for CTC decoder (required by flashlight)
+        emission = emission.cpu()
+        
         # Decode with CTC decoder
         hypotheses = self.decoder(emission)
         
@@ -319,6 +322,9 @@ class ASRCTCInference:
                 # Get emission for this sample
                 sample_logits = logits[j]
                 emission = torch.log_softmax(sample_logits.unsqueeze(0), dim=-1)
+                
+                # Move emission to CPU for CTC decoder (required by flashlight)
+                emission = emission.cpu()
                 
                 # Decode
                 hypotheses = self.decoder(emission)
@@ -414,6 +420,9 @@ class ASRCTCEvaluator:
                 # Get sample emission
                 sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
                 emission = torch.log_softmax(sample_logits, dim=-1)
+                
+                # Move emission to CPU for CTC decoder (required by flashlight)
+                emission = emission.cpu()
                 
                 # Decode with CTC decoder
                 hypotheses = self.inference.decoder(emission)

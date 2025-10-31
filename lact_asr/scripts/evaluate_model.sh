@@ -426,6 +426,9 @@ for test_set in test_sets:
                 sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
                 emission = torch.log_softmax(sample_logits, dim=-1)
                 
+                # Move emission to CPU for CTC decoder (required by flashlight)
+                emission = emission.cpu()
+                
                 # Decode with CTC decoder
                 hypotheses = inference.decoder(emission)
                 
