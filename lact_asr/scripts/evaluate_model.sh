@@ -115,6 +115,9 @@ Options:
   -o, --output-dir DIR        Directory for evaluation results (default: $DEFAULT_OUTPUT_DIR)
   --test-sets SETS            Space-separated test sets (default: "dev-clean test-clean")
   --beam-width WIDTH          Beam width for decoding (default: 1)
+  --lm-weight FLOAT           Language model weight (default: 3.23)
+  --word-score FLOAT          Word insertion score (default: -0.26)
+  --beam-threshold INT        Beam pruning threshold (default: 25)
   --max-samples NUM           Max samples per test set (default: all)
   --list-checkpoints          List available checkpoints in checkpoint directory and exit
   -h, --help                  Show this help message
@@ -128,6 +131,7 @@ Examples:
   $0 -m /nfs/stak/.../checkpoint-step-20000.pt   # Full absolute path
   $0 --test-sets "dev-clean"                     # Evaluate only on dev-clean
   $0 --beam-width 5                              # Use beam search decoding
+  $0 --lm-weight 2.5 --word-score -0.5           # Tune decoder hyperparameters
   $0 --max-samples 500                           # Evaluate on first 500 samples
   $0 --list-checkpoints -c ./checkpoints/regularized  # List checkpoints
 
@@ -141,6 +145,9 @@ DATA_DIR="$DEFAULT_DATA_DIR"
 OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
 TEST_SETS="dev-clean test-clean"
 BEAM_WIDTH=1
+LM_WEIGHT=5
+WORD_SCORE=-0.26
+BEAM_THRESHOLD=25
 MAX_SAMPLES=""
 
 while [[ $# -gt 0 ]]; do
@@ -167,6 +174,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --beam-width)
             BEAM_WIDTH="$2"
+            shift 2
+            ;;
+        --lm-weight)
+            LM_WEIGHT="$2"
+            shift 2
+            ;;
+        --word-score)
+            WORD_SCORE="$2"
+            shift 2
+            ;;
+        --beam-threshold)
+            BEAM_THRESHOLD="$2"
             shift 2
             ;;
         --max-samples)
@@ -223,7 +242,11 @@ fi
 print_status "Data directory: $DATA_DIR"
 print_status "Output directory: $OUTPUT_DIR"
 print_status "Test sets: $TEST_SETS"
-print_status "Beam width: $BEAM_WIDTH"
+print_status "Decoder parameters:"
+print_status "  Beam width: $BEAM_WIDTH"
+print_status "  LM weight: $LM_WEIGHT"
+print_status "  Word score: $WORD_SCORE"
+print_status "  Beam threshold: $BEAM_THRESHOLD"
 print_status "Max samples per set: ${MAX_SAMPLES:-all}"
 echo ""
 
@@ -310,275 +333,28 @@ print_status "Running comprehensive evaluation..."
 echo ""
 echo "=================================================="
 
-python << EOF
-import sys
-import torch
-import torch.nn.functional as F
-from pathlib import Path
-import json
-import time
-from jiwer import wer, cer
-from collections import defaultdict
-import numpy as np
+# Build the Python command with arguments
+PYTHON_CMD="python scripts/evaluate_asr_model.py \
+    --model-path \"$MODEL_FILE\" \
+    --config-path \"$CONFIG_FILE\" \
+    --data-dir \"$DATA_DIR\" \
+    --output-dir \"$OUTPUT_DIR\" \
+    --test-sets $TEST_SETS \
+    --beam-width $BEAM_WIDTH \
+    --lm-weight $LM_WEIGHT \
+    --word-score $WORD_SCORE \
+    --beam-threshold $BEAM_THRESHOLD \
+    --batch-size 8 \
+    --device cuda \
+    --move-emission-to-cpu"
 
-# Add parent directory to path
-sys.path.append(str(Path.cwd()))
+# Add max-samples if specified
+if [[ -n "$MAX_SAMPLES" ]]; then
+    PYTHON_CMD="$PYTHON_CMD --max-samples $MAX_SAMPLES"
+fi
 
-from inference.asr_ctc_decoder import ASRCTCInference, ASRCTCEvaluator
-from data import LibriSpeechDataset, ASRDataCollator, create_asr_dataloader
-
-print("=" * 80)
-print("LaCT ASR Comprehensive Evaluation with CTC Beam Search")
-print("=" * 80)
-
-# Setup CTC decoder parameters
-USE_BEAM_SEARCH = $BEAM_WIDTH > 1
-
-print(f"\nDecoder Configuration:")
-print(f"  Beam width: $BEAM_WIDTH")
-print(f"  Beam search: {'Enabled' if USE_BEAM_SEARCH else 'Disabled (greedy)'}")
-
-# Initialize CTC inference
-print(f"\nInitializing CTC inference...")
-inference = ASRCTCInference(
-    model_path="$MODEL_FILE",
-    config_path="$CONFIG_FILE",
-    device="cuda",
-    use_pretrained_librispeech=True,  # Use LibriSpeech decoder files
-    beam_size=$BEAM_WIDTH if USE_BEAM_SEARCH else 1,
-    nbest=1,
-)
-
-print(f"✓ CTC inference initialized")
-
-# Evaluation results storage
-all_results = {}
-
-# Evaluate on each test set
-test_sets = "$TEST_SETS".split()
-
-for test_set in test_sets:
-    print(f"\n{'=' * 80}")
-    print(f"Evaluating on {test_set}")
-    print(f"{'=' * 80}")
-    
-    # Load test dataset
-    test_dataset = LibriSpeechDataset(
-        root_dir="$DATA_DIR",
-        subset=test_set,
-        sample_rate=inference.config.sample_rate,
-        max_duration=30.0,
-        normalize_text=True,
-    )
-    
-    print(f"✓ Test dataset loaded: {len(test_dataset)} samples")
-    
-    # Create dataloader
-    collator = ASRDataCollator(hop_length=inference.config.hop_length)
-    test_dataloader = create_asr_dataloader(
-        test_dataset,
-        batch_size=8,
-        shuffle=False,
-        num_workers=2,
-        collate_fn=collator,
-    )
-    
-    # Evaluation metrics
-    all_predictions = []
-    all_references = []
-    inference_times = []
-    audio_durations = []
-    
-    # Track errors by length
-    errors_by_length = defaultdict(list)
-    
-    max_samples = ${MAX_SAMPLES:-999999}
-    num_processed = 0
-    
-    print(f"\nRunning inference...")
-    
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(test_dataloader):
-            if num_processed >= max_samples:
-                break
-            
-            # Move to device
-            batch = {k: v.to('cuda') if isinstance(v, torch.Tensor) else v 
-                    for k, v in batch.items()}
-            
-            # Time inference
-            start_time = time.time()
-            
-            outputs = inference.model(
-                audio_input=batch['audio_input'],
-                input_lengths=batch['input_lengths']
-            )
-            logits = outputs.logits
-            
-            inference_time = time.time() - start_time
-            
-            # Decode each sample with CTC decoder
-            for i in range(len(batch['audio_input'])):
-                if num_processed >= max_samples:
-                    break
-                
-                # Get sample emission
-                sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
-                emission = torch.log_softmax(sample_logits, dim=-1)
-                
-                # Move emission to CPU for CTC decoder (required by flashlight)
-                emission = emission.cpu()
-                
-                # Decode with CTC decoder
-                hypotheses = inference.decoder(emission)
-                
-                if hypotheses[0]:
-                    pred_text = " ".join(hypotheses[0][0].words).strip().lower()
-                else:
-                    pred_text = ""
-                
-                ref_text = batch['texts'][i].lower()
-                
-                all_predictions.append(pred_text)
-                all_references.append(ref_text)
-                
-                # Track metrics
-                audio_dur = len(batch['audio_input'][i]) / inference.config.sample_rate
-                audio_durations.append(audio_dur)
-                inference_times.append(inference_time / len(batch['audio_input']))
-                
-                # Track errors by audio length
-                sample_wer = wer(ref_text, pred_text)
-                length_bucket = int(audio_dur // 5) * 5  # 0-5s, 5-10s, etc.
-                errors_by_length[length_bucket].append(sample_wer)
-                
-                num_processed += 1
-            
-            if (batch_idx + 1) % 50 == 0:
-                print(f"  Processed {num_processed}/{min(max_samples, len(test_dataset))} samples...")
-    
-    # Compute metrics
-    print(f"\n{'=' * 80}")
-    print(f"Results for {test_set}")
-    print(f"{'=' * 80}")
-    
-    overall_wer = wer(all_references, all_predictions) * 100
-    overall_cer = cer(all_references, all_predictions) * 100
-    
-    avg_inference_time = np.mean(inference_times)
-    total_audio_duration = sum(audio_durations)
-    rtf = sum(inference_times) / total_audio_duration  # Real-Time Factor
-    
-    print(f"\n📊 Overall Metrics:")
-    print(f"  Samples evaluated: {num_processed}")
-    print(f"  Word Error Rate (WER): {overall_wer:.2f}%")
-    print(f"  Character Error Rate (CER): {overall_cer:.2f}%")
-    print(f"  Average inference time: {avg_inference_time*1000:.1f}ms per sample")
-    print(f"  Real-Time Factor (RTF): {rtf:.3f}x")
-    print(f"  Total audio processed: {total_audio_duration/3600:.2f} hours")
-    
-    # WER by audio length
-    print(f"\n📏 WER by Audio Duration:")
-    for length_bucket in sorted(errors_by_length.keys()):
-        bucket_wers = errors_by_length[length_bucket]
-        avg_wer = np.mean(bucket_wers) * 100
-        print(f"  {length_bucket:2d}-{length_bucket+5:2d}s: {avg_wer:5.2f}% WER ({len(bucket_wers)} samples)")
-    
-    # Show sample predictions
-    print(f"\n📝 Sample Predictions (first 10):")
-    print(f"{'=' * 80}")
-    for i in range(min(10, len(all_predictions))):
-        ref = all_references[i]
-        pred = all_predictions[i]
-        sample_wer = wer(ref, pred) * 100
-        sample_cer = cer(ref, pred) * 100
-        
-        print(f"\nSample {i+1}:")
-        print(f"  REF:  {ref}")
-        print(f"  PRED: {pred}")
-        print(f"  WER: {sample_wer:.1f}% | CER: {sample_cer:.1f}%")
-    
-    # Store results
-    all_results[test_set] = {
-        'wer': overall_wer,
-        'cer': overall_cer,
-        'num_samples': num_processed,
-        'avg_inference_time_ms': avg_inference_time * 1000,
-        'rtf': rtf,
-        'total_audio_hours': total_audio_duration / 3600,
-        'wer_by_length': {str(k): float(np.mean(v) * 100) for k, v in errors_by_length.items()}
-    }
-
-# Save detailed results
-print(f"\n{'=' * 80}")
-print(f"Saving Results")
-print(f"{'=' * 80}")
-
-output_dir = Path("$OUTPUT_DIR")
-output_dir.mkdir(parents=True, exist_ok=True)
-
-# Save JSON results
-results_file = output_dir / "evaluation_results.json"
-with open(results_file, 'w') as f:
-    json.dump({
-        'model_checkpoint': "$MODEL_FILE",
-        'config': "$CONFIG_FILE",
-        'training_step': 'unknown',
-        'training_epoch': 'unknown',
-        'model_config': {
-            'hidden_size': inference.config.hidden_size,
-            'num_layers': inference.config.num_hidden_layers,
-            'num_lact_heads': inference.config.num_lact_heads,
-            'num_attn_heads': inference.config.num_attn_heads,
-        },
-        'beam_width': $BEAM_WIDTH,
-        'results': all_results
-    }, f, indent=2)
-
-print(f"✓ Saved JSON results to: {results_file}")
-
-# Save markdown report
-report_file = output_dir / "evaluation_report.md"
-with open(report_file, 'w') as f:
-    f.write(f"# LaCT ASR Evaluation Report\\n\\n")
-    f.write(f"**Model:** {inference.config.hidden_size}d hidden, {inference.config.num_hidden_layers} layers, {inference.config.num_lact_heads} LaCT heads\\n")
-    f.write(f"**Training:** Step unknown, Epoch unknown\\n")
-    f.write(f"**Date:** {time.strftime('%Y-%m-%d %H:%M:%S')}\\n\\n")
-    
-    f.write(f"## Results Summary\\n\\n")
-    f.write(f"| Test Set | WER | CER | Samples | RTF |\\n")
-    f.write(f"|----------|-----|-----|---------|-----|\\n")
-    
-    for test_set, results in all_results.items():
-        f.write(f"| {test_set} | {results['wer']:.2f}% | {results['cer']:.2f}% | ")
-        f.write(f"{results['num_samples']} | {results['rtf']:.3f}x |\\n")
-    
-    f.write(f"\\n## Detailed Results\\n\\n")
-    for test_set, results in all_results.items():
-        f.write(f"### {test_set}\\n\\n")
-        f.write(f"- **WER:** {results['wer']:.2f}%\\n")
-        f.write(f"- **CER:** {results['cer']:.2f}%\\n")
-        f.write(f"- **Samples:** {results['num_samples']}\\n")
-        f.write(f"- **Avg inference time:** {results['avg_inference_time_ms']:.1f}ms\\n")
-        f.write(f"- **Real-Time Factor:** {results['rtf']:.3f}x\\n")
-        f.write(f"- **Total audio:** {results['total_audio_hours']:.2f} hours\\n\\n")
-
-print(f"✓ Saved report to: {report_file}")
-
-# Print summary
-print(f"\n{'=' * 80}")
-print(f"EVALUATION SUMMARY")
-print(f"{'=' * 80}")
-
-for test_set, results in all_results.items():
-    print(f"\n{test_set}:")
-    print(f"  WER: {results['wer']:.2f}%")
-    print(f"  CER: {results['cer']:.2f}%")
-    print(f"  RTF: {results['rtf']:.3f}x")
-
-print(f"\n{'=' * 80}")
-
-EOF
+# Execute the Python evaluation script
+eval $PYTHON_CMD
 
 exit_code=$?
 
