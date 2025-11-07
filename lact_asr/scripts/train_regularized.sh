@@ -1,12 +1,11 @@
 #!/bin/bash
-#SBATCH -t 1-12:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH -J lact_asr_regularized
 #SBATCH -A eecs
 #SBATCH -p dgxh
 #SBATCH --gres=gpu:1
 #SBATCH --mem=120G
 #SBATCH -o lact_asr_regularized.log
-#SBATCH --constraint=h200
 
 # Training script for REGULARIZED LaCT ASR model
 # Smaller model (640d, 12 layers) with stronger regularization to prevent overfitting

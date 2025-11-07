@@ -6,7 +6,6 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH -o lact_asr_evaluation.log
-#SBATCH --constraint=h200
 
 # Comprehensive evaluation script for LaCT ASR model
 # Computes WER, CER on test sets and generates detailed analysis
@@ -144,8 +143,8 @@ CHECKPOINT_FILE=""
 DATA_DIR="$DEFAULT_DATA_DIR"
 OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
 TEST_SETS="dev-clean test-clean"
-BEAM_WIDTH=1
-LM_WEIGHT=5
+BEAM_WIDTH=500
+LM_WEIGHT=2.5
 WORD_SCORE=-0.26
 BEAM_THRESHOLD=25
 MAX_SAMPLES=""
