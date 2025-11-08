@@ -7,7 +7,7 @@
 #SBATCH --mem=64G
 #SBATCH -o lact_asr_evaluation.log
 
-# Comprehensive evaluation script for LaCT ASR model
+# Comprehensive evaluation script for LaCT or wav2vec2 ASR models
 # Computes WER, CER on test sets and generates detailed analysis
 
 # Load HPC modules
@@ -110,6 +110,7 @@ Options:
                               - Relative path: ./checkpoints/my_model/checkpoint-step-5000.pt
                               - Absolute path: /full/path/to/checkpoint-step-5000.pt
                               If not specified, uses best_model.pt or latest_checkpoint.pt
+  --model-type TYPE           Model type to evaluate: lact (default) or wav2vec2
   -d, --data-dir DIR          Directory with LibriSpeech dataset (default: $DEFAULT_DATA_DIR)
   -o, --output-dir DIR        Directory for evaluation results (default: $DEFAULT_OUTPUT_DIR)
   --test-sets SETS            Space-separated test sets (default: "dev-clean test-clean")
@@ -118,6 +119,9 @@ Options:
   --word-score FLOAT          Word insertion score (default: -0.26)
   --beam-threshold INT        Beam pruning threshold (default: 25)
   --max-samples NUM           Max samples per test set (default: all)
+  --hf-model-id ID            HuggingFace model ID for wav2vec2 evaluation (default: facebook/wav2vec2-base-960h)
+  --hf-revision REV           Optional HuggingFace revision/tag for wav2vec2 model
+  --hf-cache-dir DIR          Optional cache directory for HuggingFace downloads
   --list-checkpoints          List available checkpoints in checkpoint directory and exit
   -h, --help                  Show this help message
 
@@ -148,6 +152,10 @@ LM_WEIGHT=2.5
 WORD_SCORE=-0.26
 BEAM_THRESHOLD=25
 MAX_SAMPLES=""
+MODEL_TYPE="lact"
+HF_MODEL_ID="facebook/wav2vec2-base-960h"
+HF_REVISION=""
+HF_CACHE_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -191,6 +199,22 @@ while [[ $# -gt 0 ]]; do
             MAX_SAMPLES="$2"
             shift 2
             ;;
+        --model-type)
+            MODEL_TYPE="$2"
+            shift 2
+            ;;
+        --hf-model-id)
+            HF_MODEL_ID="$2"
+            shift 2
+            ;;
+        --hf-revision)
+            HF_REVISION="$2"
+            shift 2
+            ;;
+        --hf-cache-dir)
+            HF_CACHE_DIR="$2"
+            shift 2
+            ;;
         --list-checkpoints)
             list_checkpoints "$CHECKPOINT_DIR"
             exit 0
@@ -226,17 +250,32 @@ while [[ $# -gt 0 ]]; do
 done
 
 date
-echo "📊 Starting LaCT ASR Comprehensive Evaluation"
+echo "📊 Starting ASR Comprehensive Evaluation"
 echo "Working directory: $(pwd)"
 echo "Virtual environment: $VIRTUAL_ENV"
 nvidia-smi
 echo ""
 
-print_status "LaCT ASR Model Evaluation"
-print_status "========================="
-print_status "Checkpoint directory: $CHECKPOINT_DIR"
-if [[ -n "$CHECKPOINT_FILE" ]]; then
-    print_status "Checkpoint file: $CHECKPOINT_FILE"
+print_status "ASR Model Evaluation"
+print_status "===================="
+print_status "Model type: $MODEL_TYPE"
+if [[ "$MODEL_TYPE" == "lact" ]]; then
+    print_status "Checkpoint directory: $CHECKPOINT_DIR"
+    if [[ -n "$CHECKPOINT_FILE" ]]; then
+        print_status "Checkpoint file: $CHECKPOINT_FILE"
+    fi
+else
+    if [[ -n "$CHECKPOINT_FILE" ]]; then
+        print_status "Checkpoint override: $CHECKPOINT_FILE"
+    else
+        print_status "HuggingFace model ID: $HF_MODEL_ID"
+        if [[ -n "$HF_REVISION" ]]; then
+            print_status "HF revision: $HF_REVISION"
+        fi
+        if [[ -n "$HF_CACHE_DIR" ]]; then
+            print_status "HF cache dir: $HF_CACHE_DIR"
+        fi
+    fi
 fi
 print_status "Data directory: $DATA_DIR"
 print_status "Output directory: $OUTPUT_DIR"
@@ -247,81 +286,106 @@ print_status "  LM weight: $LM_WEIGHT"
 print_status "  Word score: $WORD_SCORE"
 print_status "  Beam threshold: $BEAM_THRESHOLD"
 print_status "Max samples per set: ${MAX_SAMPLES:-all}"
+if [[ "$MODEL_TYPE" == "wav2vec2" && "$BEAM_WIDTH" -gt 1 ]]; then
+    print_warning "Beam search parameters are ignored for wav2vec2 models (greedy decoding only)."
+fi
 echo ""
 
-# Determine which checkpoint file to use
-if [[ -n "$CHECKPOINT_FILE" ]]; then
-    # User specified a checkpoint file
-    # Check if it's an absolute path or contains directory separators
-    if [[ "$CHECKPOINT_FILE" == /* ]] || [[ "$CHECKPOINT_FILE" == */* ]]; then
-        # It's a full/relative path, use it as-is
-        MODEL_FILE="$CHECKPOINT_FILE"
-        # Update CHECKPOINT_DIR to the directory of this file
-        CHECKPOINT_DIR="$(dirname "$MODEL_FILE")"
-        CHECKPOINT_FILE="$(basename "$MODEL_FILE")"
-    else
-        # It's just a filename, combine with checkpoint dir
-        MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
-    fi
-    
-    # Check if checkpoint directory exists
-    if [[ ! -d "$CHECKPOINT_DIR" ]]; then
-        print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
-        exit 1
-    fi
-    
-    if [[ ! -f "$MODEL_FILE" ]]; then
-        print_error "Specified checkpoint file not found: $MODEL_FILE"
-        print_status "Available checkpoints in $CHECKPOINT_DIR:"
-        ls -lh "$CHECKPOINT_DIR"/*.pt 2>/dev/null || echo "  No .pt files found"
-        exit 1
-    fi
-    print_success "Using specified checkpoint: $CHECKPOINT_FILE"
-else
-    # Check if checkpoint directory exists (for auto-select mode)
-    if [[ ! -d "$CHECKPOINT_DIR" ]]; then
-        print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
-        exit 1
-    fi
-    
-    # Auto-select: best_model.pt > latest_checkpoint.pt > any checkpoint-step-*.pt
-    MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
-    if [[ ! -f "$MODEL_FILE" ]]; then
-        MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
+MODEL_FILE=""
+CONFIG_FILE=""
+
+if [[ "$MODEL_TYPE" == "lact" ]]; then
+    # Determine which checkpoint file to use
+    if [[ -n "$CHECKPOINT_FILE" ]]; then
+        # User specified a checkpoint file
+        # Check if it's an absolute path or contains directory separators
+        if [[ "$CHECKPOINT_FILE" == /* ]] || [[ "$CHECKPOINT_FILE" == */* ]]; then
+            # It's a full/relative path, use it as-is
+            MODEL_FILE="$CHECKPOINT_FILE"
+            # Update CHECKPOINT_DIR to the directory of this file
+            CHECKPOINT_DIR="$(dirname "$MODEL_FILE")"
+            CHECKPOINT_FILE="$(basename "$MODEL_FILE")"
+        else
+            # It's just a filename, combine with checkpoint dir
+            MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
+        fi
+        
+        # Check if checkpoint directory exists
+        if [[ ! -d "$CHECKPOINT_DIR" ]]; then
+            print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
+            exit 1
+        fi
+        
         if [[ ! -f "$MODEL_FILE" ]]; then
-            # Try to find any checkpoint-step-*.pt file
-            STEP_CHECKPOINTS=($(ls -t "$CHECKPOINT_DIR"/checkpoint-step-*.pt 2>/dev/null))
-            if [[ ${#STEP_CHECKPOINTS[@]} -gt 0 ]]; then
-                MODEL_FILE="${STEP_CHECKPOINTS[0]}"
-                print_warning "Using most recent step checkpoint: $(basename $MODEL_FILE)"
+            print_error "Specified checkpoint file not found: $MODEL_FILE"
+            print_status "Available checkpoints in $CHECKPOINT_DIR:"
+            ls -lh "$CHECKPOINT_DIR"/*.pt 2>/dev/null || echo "  No .pt files found"
+            exit 1
+        fi
+        print_success "Using specified checkpoint: $CHECKPOINT_FILE"
+    else
+        # Check if checkpoint directory exists (for auto-select mode)
+        if [[ ! -d "$CHECKPOINT_DIR" ]]; then
+            print_error "Checkpoint directory not found: $CHECKPOINT_DIR"
+            exit 1
+        fi
+        
+        # Auto-select: best_model.pt > latest_checkpoint.pt > any checkpoint-step-*.pt
+        MODEL_FILE="$CHECKPOINT_DIR/best_model.pt"
+        if [[ ! -f "$MODEL_FILE" ]]; then
+            MODEL_FILE="$CHECKPOINT_DIR/latest_checkpoint.pt"
+            if [[ ! -f "$MODEL_FILE" ]]; then
+                # Try to find any checkpoint-step-*.pt file
+                STEP_CHECKPOINTS=($(ls -t "$CHECKPOINT_DIR"/checkpoint-step-*.pt 2>/dev/null))
+                if [[ ${#STEP_CHECKPOINTS[@]} -gt 0 ]]; then
+                    MODEL_FILE="${STEP_CHECKPOINTS[0]}"
+                    print_warning "Using most recent step checkpoint: $(basename $MODEL_FILE)"
+                else
+                    print_error "No model checkpoint found in $CHECKPOINT_DIR"
+                    print_status "Expected files: best_model.pt, latest_checkpoint.pt, or checkpoint-step-*.pt"
+                    exit 1
+                fi
             else
-                print_error "No model checkpoint found in $CHECKPOINT_DIR"
-                print_status "Expected files: best_model.pt, latest_checkpoint.pt, or checkpoint-step-*.pt"
-                exit 1
+                print_warning "Using latest_checkpoint.pt (best_model.pt not found)"
             fi
         else
-            print_warning "Using latest_checkpoint.pt (best_model.pt not found)"
+            print_success "Using best_model.pt"
         fi
+    fi
+
+    CONFIG_FILE="$CHECKPOINT_DIR/config.json"
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        print_error "Config file not found: $CONFIG_FILE"
+        exit 1
+    fi
+
+    print_success "Using checkpoint: $(basename $MODEL_FILE)"
+    print_success "Full path: $MODEL_FILE"
+    print_success "Config: $CONFIG_FILE"
+
+    # Show checkpoint info if available
+    if [[ -f "$MODEL_FILE" ]]; then
+        CHECKPOINT_SIZE=$(du -h "$MODEL_FILE" | cut -f1)
+        print_status "Checkpoint size: $CHECKPOINT_SIZE"
+    fi
+else
+    if [[ -n "$CHECKPOINT_FILE" ]]; then
+        if [[ "$CHECKPOINT_FILE" == /* ]] || [[ "$CHECKPOINT_FILE" == */* ]]; then
+            MODEL_FILE="$CHECKPOINT_FILE"
+        else
+            MODEL_FILE="$CHECKPOINT_DIR/$CHECKPOINT_FILE"
+        fi
+
+        if [[ ! -f "$MODEL_FILE" && ! -d "$MODEL_FILE" ]]; then
+            print_error "Specified wav2vec2 model path not found: $MODEL_FILE"
+            exit 1
+        fi
+        print_success "Using local wav2vec2 weights: $MODEL_FILE"
     else
-        print_success "Using best_model.pt"
+        print_status "No local checkpoint provided; will download HuggingFace model: $HF_MODEL_ID"
     fi
 fi
 
-CONFIG_FILE="$CHECKPOINT_DIR/config.json"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    print_error "Config file not found: $CONFIG_FILE"
-    exit 1
-fi
-
-print_success "Using checkpoint: $(basename $MODEL_FILE)"
-print_success "Full path: $MODEL_FILE"
-print_success "Config: $CONFIG_FILE"
-
-# Show checkpoint info if available
-if [[ -f "$MODEL_FILE" ]]; then
-    CHECKPOINT_SIZE=$(du -h "$MODEL_FILE" | cut -f1)
-    print_status "Checkpoint size: $CHECKPOINT_SIZE"
-fi
 echo ""
 
 # Create output directory
@@ -333,27 +397,45 @@ echo ""
 echo "=================================================="
 
 # Build the Python command with arguments
-PYTHON_CMD="python scripts/evaluate_asr_model.py \
-    --model-path \"$MODEL_FILE\" \
-    --config-path \"$CONFIG_FILE\" \
-    --data-dir \"$DATA_DIR\" \
-    --output-dir \"$OUTPUT_DIR\" \
-    --test-sets $TEST_SETS \
-    --beam-width $BEAM_WIDTH \
-    --lm-weight $LM_WEIGHT \
-    --word-score $WORD_SCORE \
-    --beam-threshold $BEAM_THRESHOLD \
-    --batch-size 8 \
-    --device cuda \
-    --move-emission-to-cpu"
+PYTHON_CMD=(python scripts/evaluate_asr_model.py
+    --model-type "$MODEL_TYPE"
+    --data-dir "$DATA_DIR"
+    --output-dir "$OUTPUT_DIR"
+    --beam-width "$BEAM_WIDTH"
+    --lm-weight "$LM_WEIGHT"
+    --word-score "$WORD_SCORE"
+    --beam-threshold "$BEAM_THRESHOLD"
+    --batch-size 8
+    --device cuda
+)
 
-# Add max-samples if specified
+# Add test sets (nargs+ requires the flag to be followed by values)
+PYTHON_CMD+=(--test-sets)
+for test_set in $TEST_SETS; do
+    PYTHON_CMD+=("$test_set")
+done
+
 if [[ -n "$MAX_SAMPLES" ]]; then
-    PYTHON_CMD="$PYTHON_CMD --max-samples $MAX_SAMPLES"
+    PYTHON_CMD+=(--max-samples "$MAX_SAMPLES")
+fi
+
+if [[ "$MODEL_TYPE" == "lact" ]]; then
+    PYTHON_CMD+=(--model-path "$MODEL_FILE" --config-path "$CONFIG_FILE" --move-emission-to-cpu)
+else
+    if [[ -n "$MODEL_FILE" ]]; then
+        PYTHON_CMD+=(--model-path "$MODEL_FILE")
+    fi
+    PYTHON_CMD+=(--hf-model-id "$HF_MODEL_ID")
+    if [[ -n "$HF_REVISION" ]]; then
+        PYTHON_CMD+=(--hf-revision "$HF_REVISION")
+    fi
+    if [[ -n "$HF_CACHE_DIR" ]]; then
+        PYTHON_CMD+=(--hf-cache-dir "$HF_CACHE_DIR")
+    fi
 fi
 
 # Execute the Python evaluation script
-eval $PYTHON_CMD
+"${PYTHON_CMD[@]}"
 
 exit_code=$?
 

@@ -1,25 +1,131 @@
 #!/usr/bin/env python3
 """
-Comprehensive evaluation script for LaCT ASR model.
+Comprehensive evaluation script for LaCT and Wav2Vec2 ASR models.
 Computes WER, CER on test sets and generates detailed analysis.
 """
 
 import sys
 import argparse
 import torch
-import torch.nn.functional as F
 from pathlib import Path
 import json
 import time
 from jiwer import wer, cer
 from collections import defaultdict
 import numpy as np
+from types import SimpleNamespace
+
+try:
+    from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
+except ImportError:
+    Wav2Vec2ForCTC = None
+    Wav2Vec2Processor = None
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from inference.asr_ctc_decoder import ASRCTCInference, ASRCTCEvaluator
+from inference.asr_ctc_decoder import ASRCTCInference
 from data import LibriSpeechDataset, ASRDataCollator, create_asr_dataloader
+
+
+class Wav2Vec2InferenceAdapter:
+    """
+    Adapter to evaluate HuggingFace Wav2Vec2 style CTC models with this script.
+    Provides a minimal interface similar to ASRCTCInference.
+    """
+
+    def __init__(
+        self,
+        model_id: str,
+        device: str = "cuda",
+        revision: str | None = None,
+        cache_dir: str | None = None,
+    ):
+        if Wav2Vec2ForCTC is None or Wav2Vec2Processor is None:
+            raise ImportError(
+                "transformers is required for Wav2Vec2 evaluation. "
+                "Install it with `pip install transformers`."
+            )
+
+        self.model_id = model_id
+        self.device = device
+        self.processor = Wav2Vec2Processor.from_pretrained(
+            model_id,
+            revision=revision,
+            cache_dir=cache_dir,
+        )
+        self.model = Wav2Vec2ForCTC.from_pretrained(
+            model_id,
+            revision=revision,
+            cache_dir=cache_dir,
+        ).to(device)
+        self.model.eval()
+
+        # Provide config-like namespace for downstream code
+        self.config = SimpleNamespace(
+            sample_rate=16000,
+            hop_length=160,
+            hidden_size=getattr(self.model.config, "hidden_size", "unknown"),
+            num_hidden_layers=getattr(self.model.config, "num_hidden_layers", "unknown"),
+            num_lact_heads="N/A",
+            num_attn_heads=getattr(self.model.config, "num_attention_heads", "unknown"),
+        )
+
+    def _prepare_waveforms(self, batch, max_samples: int | None = None):
+        """Trim padded waveforms back to their original lengths."""
+        hop_length = self.config.hop_length
+        waveforms = []
+        sample_lengths = []
+
+        for audio, length_frames in zip(batch["audio_input"], batch["input_lengths"]):
+            sample_length = int(length_frames.item()) * hop_length
+            waveform = audio[:sample_length].cpu()
+            waveforms.append(waveform.numpy())
+            sample_lengths.append(sample_length)
+
+        if max_samples is not None:
+            waveforms = waveforms[:max_samples]
+            sample_lengths = sample_lengths[:max_samples]
+
+        return waveforms, sample_lengths
+
+    def infer_batch(self, batch, max_samples: int | None = None):
+        """
+        Run the Wav2Vec2 model on a batch and return normalized transcripts.
+        """
+        waveforms, sample_lengths = self._prepare_waveforms(batch, max_samples=max_samples)
+        if not waveforms:
+            return [], sample_lengths, 0.0
+
+        start_time = time.time()
+        inputs = self.processor(
+            waveforms,
+            sampling_rate=self.config.sample_rate,
+            return_tensors="pt",
+            padding=True,
+        )
+        input_values = inputs.input_values.to(self.device)
+        attention_mask = inputs.attention_mask.to(self.device) if "attention_mask" in inputs else None
+
+        with torch.no_grad():
+            logits = self.model(
+                input_values=input_values,
+                attention_mask=attention_mask,
+            ).logits
+
+        inference_time = time.time() - start_time
+
+        predicted_ids = torch.argmax(logits, dim=-1)
+        transcripts = self.processor.batch_decode(predicted_ids)
+        transcripts = [self._normalize_text(t) for t in transcripts]
+
+        return transcripts, sample_lengths, inference_time
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        text = text.lower().strip()
+        text = " ".join(text.split())
+        return text
 
 
 def parse_args():
@@ -28,16 +134,42 @@ def parse_args():
         description="Comprehensive evaluation of LaCT ASR model"
     )
     parser.add_argument(
+        "--model-type",
+        type=str,
+        choices=["lact", "wav2vec2"],
+        default="lact",
+        help="Type of model to evaluate."
+    )
+    parser.add_argument(
         "--model-path",
         type=str,
-        required=True,
-        help="Path to model checkpoint (.pt file)"
+        default=None,
+        help="Path to model checkpoint (.pt file) or directory. "
+             "For HuggingFace models this can point to a local clone."
     )
     parser.add_argument(
         "--config-path",
         type=str,
-        required=True,
-        help="Path to model config file (config.json)"
+        default=None,
+        help="Path to model config file (config.json). Required for LaCT models."
+    )
+    parser.add_argument(
+        "--hf-model-id",
+        type=str,
+        default="facebook/wav2vec2-base-960h",
+        help="HuggingFace model identifier for Wav2Vec2 evaluation."
+    )
+    parser.add_argument(
+        "--hf-revision",
+        type=str,
+        default=None,
+        help="Specific revision of the HuggingFace model to download."
+    )
+    parser.add_argument(
+        "--hf-cache-dir",
+        type=str,
+        default=None,
+        help="Optional cache directory for HuggingFace downloads."
     )
     parser.add_argument(
         "--data-dir",
@@ -116,7 +248,9 @@ def evaluate_test_set(
     max_samples,
     batch_size,
     device,
-    move_emission_to_cpu=False
+    move_emission_to_cpu=False,
+    model_type: str = "lact",
+    wav2vec2_adapter: Wav2Vec2InferenceAdapter | None = None,
 ):
     """
     Evaluate model on a single test set.
@@ -137,11 +271,22 @@ def evaluate_test_set(
     print(f"Evaluating on {test_set}")
     print(f"{'=' * 80}")
     
+    if model_type == "lact":
+        if inference is None:
+            raise ValueError("ASRCTCInference instance is required for LaCT evaluation.")
+        model_config = inference.config
+    elif model_type == "wav2vec2":
+        if wav2vec2_adapter is None:
+            raise ValueError("Wav2Vec2InferenceAdapter instance is required for Wav2Vec2 evaluation.")
+        model_config = wav2vec2_adapter.config
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
     # Load test dataset
     test_dataset = LibriSpeechDataset(
         root_dir=data_dir,
         subset=test_set,
-        sample_rate=inference.config.sample_rate,
+        sample_rate=model_config.sample_rate,
         max_duration=30.0,
         normalize_text=True,
     )
@@ -149,7 +294,7 @@ def evaluate_test_set(
     print(f"✓ Test dataset loaded: {len(test_dataset)} samples")
     
     # Create dataloader
-    collator = ASRDataCollator(hop_length=inference.config.hop_length)
+    collator = ASRDataCollator(hop_length=model_config.hop_length)
     test_dataloader = create_asr_dataloader(
         test_dataset,
         batch_size=batch_size,
@@ -172,64 +317,96 @@ def evaluate_test_set(
     
     print(f"\nRunning inference...")
     
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(test_dataloader):
-            if num_processed >= max_samples_val:
-                break
-            
-            # Move to device
-            batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v 
-                    for k, v in batch.items()}
-            
-            # Time inference
-            start_time = time.time()
-            
-            outputs = inference.model(
-                audio_input=batch['audio_input'],
-                input_lengths=batch['input_lengths']
-            )
-            logits = outputs.logits
-            
-            inference_time = time.time() - start_time
-            
-            # Decode each sample with CTC decoder
-            for i in range(len(batch['audio_input'])):
+    if model_type == "lact":
+        with torch.no_grad():
+            for batch_idx, batch in enumerate(test_dataloader):
                 if num_processed >= max_samples_val:
                     break
                 
-                # Get sample emission
-                sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
-                emission = torch.log_softmax(sample_logits, dim=-1)
+                # Move to device
+                batch = {
+                    k: v.to(device) if isinstance(v, torch.Tensor) else v
+                    for k, v in batch.items()
+                }
                 
-                # Move emission to CPU for CTC decoder if requested
-                if move_emission_to_cpu:
-                    emission = emission.cpu()
+                # Time inference
+                start_time = time.time()
                 
-                # Decode with CTC decoder
-                hypotheses = inference.decoder(emission)
+                outputs = inference.model(
+                    audio_input=batch['audio_input'],
+                    input_lengths=batch['input_lengths']
+                )
+                logits = outputs.logits
                 
-                if hypotheses[0]:
-                    pred_text = " ".join(hypotheses[0][0].words).strip().lower()
-                else:
-                    pred_text = ""
+                inference_time = time.time() - start_time
                 
-                ref_text = batch['texts'][i].lower()
+                # Decode each sample with CTC decoder
+                for i in range(len(batch['audio_input'])):
+                    if num_processed >= max_samples_val:
+                        break
+                    
+                    # Get sample emission
+                    sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
+                    emission = torch.log_softmax(sample_logits, dim=-1)
+                    
+                    # Move emission to CPU for CTC decoder if requested
+                    if move_emission_to_cpu:
+                        emission = emission.cpu()
+                    
+                    # Decode with CTC decoder
+                    hypotheses = inference.decoder(emission)
+                    
+                    if hypotheses[0]:
+                        pred_text = " ".join(hypotheses[0][0].words).strip().lower()
+                    else:
+                        pred_text = ""
+                    
+                    ref_text = batch['texts'][i].lower()
+                    
+                    all_predictions.append(pred_text)
+                    all_references.append(ref_text)
+                    
+                    # Track metrics
+                    audio_dur = len(batch['audio_input'][i]) / model_config.sample_rate
+                    audio_durations.append(audio_dur)
+                    inference_times.append(inference_time / len(batch['audio_input']))
+                    
+                    # Track errors by audio length
+                    sample_wer = wer(ref_text, pred_text)
+                    length_bucket = int(audio_dur // 5) * 5  # 0-5s, 5-10s, etc.
+                    errors_by_length[length_bucket].append(sample_wer)
+                    
+                    num_processed += 1
                 
+                if (batch_idx + 1) % 50 == 0:
+                    print(f"  Processed {num_processed}/{min(max_samples_val, len(test_dataset))} samples...")
+    else:  # Wav2Vec2 path
+        for batch_idx, batch in enumerate(test_dataloader):
+            if num_processed >= max_samples_val:
+                break
+
+            remaining = max_samples_val - num_processed
+            predictions, sample_lengths, inference_time = wav2vec2_adapter.infer_batch(
+                batch,
+                max_samples=remaining
+            )
+
+            references = [text.lower() for text in batch["texts"][:len(predictions)]]
+
+            for pred_text, ref_text, sample_length in zip(predictions, references, sample_lengths):
+                audio_dur = sample_length / model_config.sample_rate
+                inference_times.append(inference_time / max(len(predictions), 1))
+                audio_durations.append(audio_dur)
+
                 all_predictions.append(pred_text)
                 all_references.append(ref_text)
-                
-                # Track metrics
-                audio_dur = len(batch['audio_input'][i]) / inference.config.sample_rate
-                audio_durations.append(audio_dur)
-                inference_times.append(inference_time / len(batch['audio_input']))
-                
-                # Track errors by audio length
+
                 sample_wer = wer(ref_text, pred_text)
-                length_bucket = int(audio_dur // 5) * 5  # 0-5s, 5-10s, etc.
+                length_bucket = int(audio_dur // 5) * 5
                 errors_by_length[length_bucket].append(sample_wer)
-                
+
                 num_processed += 1
-            
+
             if (batch_idx + 1) % 50 == 0:
                 print(f"  Processed {num_processed}/{min(max_samples_val, len(test_dataset))} samples...")
     
@@ -238,12 +415,12 @@ def evaluate_test_set(
     print(f"Results for {test_set}")
     print(f"{'=' * 80}")
     
-    overall_wer = wer(all_references, all_predictions) * 100
-    overall_cer = cer(all_references, all_predictions) * 100
+    overall_wer = wer(all_references, all_predictions) * 100 if all_predictions else 0.0
+    overall_cer = cer(all_references, all_predictions) * 100 if all_predictions else 0.0
     
-    avg_inference_time = np.mean(inference_times)
+    avg_inference_time = float(np.mean(inference_times)) if inference_times else 0.0
     total_audio_duration = sum(audio_durations)
-    rtf = sum(inference_times) / total_audio_duration  # Real-Time Factor
+    rtf = (sum(inference_times) / total_audio_duration) if total_audio_duration > 0 else 0.0  # Real-Time Factor
     
     print(f"\n📊 Overall Metrics:")
     print(f"  Samples evaluated: {num_processed}")
@@ -368,7 +545,7 @@ def main():
     print("LaCT ASR Comprehensive Evaluation with CTC Beam Search")
     print("=" * 80)
     
-    # Setup CTC decoder parameters
+    # Setup decoder parameters (only relevant for LaCT)
     use_beam_search = args.beam_width > 1
     
     print(f"\nDecoder Configuration:")
@@ -378,21 +555,50 @@ def main():
     print(f"  Word score: {args.word_score}")
     print(f"  Beam threshold: {args.beam_threshold}")
     
-    # Initialize CTC inference
-    print(f"\nInitializing CTC inference...")
-    inference = ASRCTCInference(
-        model_path=args.model_path,
-        config_path=args.config_path,
-        device=args.device,
-        use_pretrained_librispeech=True,  # Use LibriSpeech decoder files
-        beam_size=args.beam_width if use_beam_search else 1,
-        lm_weight=args.lm_weight,
-        word_score=args.word_score,
-        beam_threshold=args.beam_threshold,
-        nbest=1,
-    )
+    inference = None
+    wav2vec2_adapter = None
+    model_identifier = args.model_path
+    config_identifier = args.config_path
     
-    print(f"✓ CTC inference initialized")
+    if args.model_type == "lact":
+        if not args.model_path or not args.config_path:
+            raise ValueError("--model-path and --config-path are required for LaCT models.")
+        
+        print(f"\nInitializing LaCT CTC inference...")
+        inference = ASRCTCInference(
+            model_path=args.model_path,
+            config_path=args.config_path,
+            device=args.device,
+            use_pretrained_librispeech=True,  # Use LibriSpeech decoder files
+            beam_size=args.beam_width if use_beam_search else 1,
+            lm_weight=args.lm_weight,
+            word_score=args.word_score,
+            beam_threshold=args.beam_threshold,
+            nbest=1,
+        )
+        print(f"✓ LaCT CTC inference initialized")
+    else:
+        if Wav2Vec2ForCTC is None or Wav2Vec2Processor is None:
+            raise ImportError(
+                "transformers is not installed. Install it with `pip install transformers` "
+                "to evaluate Wav2Vec2 models."
+            )
+        model_identifier = args.model_path if args.model_path else args.hf_model_id
+        config_identifier = args.hf_model_id
+        
+        if args.beam_width > 1:
+            print("⚠️  Beam search parameters are ignored for Wav2Vec2 evaluation (greedy decoding only).")
+        if args.move_emission_to_cpu:
+            print("⚠️  --move-emission-to-cpu is not required for Wav2Vec2 models and will be ignored.")
+        
+        print(f"\nInitializing Wav2Vec2 model ({model_identifier})...")
+        wav2vec2_adapter = Wav2Vec2InferenceAdapter(
+            model_id=model_identifier,
+            device=args.device,
+            revision=args.hf_revision,
+            cache_dir=args.hf_cache_dir,
+        )
+        print("✓ Wav2Vec2 model loaded")
     
     # Evaluation results storage
     all_results = {}
@@ -406,21 +612,26 @@ def main():
             max_samples=args.max_samples,
             batch_size=args.batch_size,
             device=args.device,
-            move_emission_to_cpu=args.move_emission_to_cpu
+            move_emission_to_cpu=args.move_emission_to_cpu if args.model_type == "lact" else False,
+            model_type=args.model_type,
+            wav2vec2_adapter=wav2vec2_adapter
         )
         all_results[test_set] = results
+    
+    # Determine config for saving
+    inference_config = inference.config if args.model_type == "lact" else wav2vec2_adapter.config
     
     # Save results
     save_results(
         all_results=all_results,
-        model_path=args.model_path,
-        config_path=args.config_path,
+        model_path=model_identifier,
+        config_path=config_identifier,
         output_dir=args.output_dir,
         beam_width=args.beam_width,
         lm_weight=args.lm_weight,
         word_score=args.word_score,
         beam_threshold=args.beam_threshold,
-        inference_config=inference.config
+        inference_config=inference_config
     )
     
     # Print summary
