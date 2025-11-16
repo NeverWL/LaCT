@@ -7,7 +7,7 @@
 #SBATCH -o librispeech_download_full.log
 
 # Download full LibriSpeech dataset for improved training
-# Downloads train-clean-360 (360 hours) + dev-clean + test-clean
+# Downloads train-clean-100 + train-clean-360 + train-other-500 + dev-clean + test-clean
 
 # Load HPC modules
 ml load gcc/12.2
@@ -26,7 +26,7 @@ cd /nfs/stak/users/limjar/hpc-share/LaCT/lact_asr
 
 # Configuration
 DATA_DIR="/nfs/stak/users/limjar/hpc-share/datasets/LibriSpeech_LaCT"
-SUBSETS="train-clean-360 dev-clean test-clean"
+SUBSETS="train-clean-100 train-clean-360 train-other-500 dev-clean test-clean"
 
 # Color codes
 BLUE='\033[0;34m'

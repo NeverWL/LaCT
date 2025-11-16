@@ -117,7 +117,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --full)
-            SUBSETS="train-clean-100 train-clean-360 dev-clean test-clean"
+            SUBSETS="train-clean-100 train-clean-360 train-other-500 dev-clean test-clean"
             shift
             ;;
         --minimal)
@@ -220,21 +220,22 @@ LIBRISPEECH_PATH="$DATA_DIR/LibriSpeech"
 if [[ -d "$LIBRISPEECH_PATH" && "$FORCE" != "true" ]]; then
     print_warning "Dataset already exists at $LIBRISPEECH_PATH"
     
-    # Check if all requested subsets exist
-    all_exist=true
+    # Check which requested subsets are missing
+    missing_subsets=()
     for subset in $SUBSETS; do
         if [[ ! -d "$LIBRISPEECH_PATH/$subset" ]]; then
-            all_exist=false
-            break
+            missing_subsets+=("$subset")
         fi
     done
     
-    if [[ "$all_exist" == "true" ]]; then
+    if [[ ${#missing_subsets[@]} -eq 0 ]]; then
         print_status "All requested subsets already exist"
         print_status "Using existing dataset (SLURM non-interactive mode)"
-    exit 0
+        exit 0
     else
-        print_warning "Some subsets are missing, will download all requested subsets"
+        print_warning "Missing subsets: ${missing_subsets[*]}"
+        SUBSETS="${missing_subsets[*]}"
+        print_status "Will download only missing subsets: $SUBSETS"
     fi
 fi
 
@@ -243,7 +244,7 @@ print_status "Starting LibriSpeech download via HuggingFace..."
 start_time=$(date +%s)
 
 # Build Python command
-PYTHON_CMD="python $PYTHON_SCRIPT --data-dir $DATA_DIR --subsets $SUBSETS"
+PYTHON_CMD="python $PYTHON_SCRIPT --data-dir $DATA_DIR --subsets \"$SUBSETS\""
 if [[ "$NO_VALIDATE" == "true" ]]; then
     PYTHON_CMD="$PYTHON_CMD --no-validate"
 fi
