@@ -281,7 +281,7 @@ def evaluate_test_set(
         model_config = wav2vec2_adapter.config
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
-
+    
     # Load test dataset
     test_dataset = LibriSpeechDataset(
         root_dir=data_dir,
@@ -318,62 +318,62 @@ def evaluate_test_set(
     print(f"\nRunning inference...")
     
     if model_type == "lact":
-        with torch.no_grad():
-            for batch_idx, batch in enumerate(test_dataloader):
-                if num_processed >= max_samples_val:
-                    break
-                
-                # Move to device
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(test_dataloader):
+            if num_processed >= max_samples_val:
+                break
+            
+            # Move to device
                 batch = {
                     k: v.to(device) if isinstance(v, torch.Tensor) else v
                     for k, v in batch.items()
                 }
+            
+            # Time inference
+            start_time = time.time()
+            
+            outputs = inference.model(
+                audio_input=batch['audio_input'],
+                input_lengths=batch['input_lengths']
+            )
+            logits = outputs.logits
+            
+            inference_time = time.time() - start_time
+            
+            # Decode each sample with CTC decoder
+            for i in range(len(batch['audio_input'])):
+                if num_processed >= max_samples_val:
+                    break
                 
-                # Time inference
-                start_time = time.time()
+                # Get sample emission
+                sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
+                emission = torch.log_softmax(sample_logits, dim=-1)
                 
-                outputs = inference.model(
-                    audio_input=batch['audio_input'],
-                    input_lengths=batch['input_lengths']
-                )
-                logits = outputs.logits
+                # Move emission to CPU for CTC decoder if requested
+                if move_emission_to_cpu:
+                    emission = emission.cpu()
                 
-                inference_time = time.time() - start_time
+                # Decode with CTC decoder
+                hypotheses = inference.decoder(emission)
                 
-                # Decode each sample with CTC decoder
-                for i in range(len(batch['audio_input'])):
-                    if num_processed >= max_samples_val:
-                        break
-                    
-                    # Get sample emission
-                    sample_logits = logits[i].unsqueeze(0)  # [1, time, vocab]
-                    emission = torch.log_softmax(sample_logits, dim=-1)
-                    
-                    # Move emission to CPU for CTC decoder if requested
-                    if move_emission_to_cpu:
-                        emission = emission.cpu()
-                    
-                    # Decode with CTC decoder
-                    hypotheses = inference.decoder(emission)
-                    
-                    if hypotheses[0]:
-                        pred_text = " ".join(hypotheses[0][0].words).strip().lower()
-                    else:
-                        pred_text = ""
-                    
-                    ref_text = batch['texts'][i].lower()
-                    
-                    all_predictions.append(pred_text)
-                    all_references.append(ref_text)
-                    
-                    # Track metrics
+                if hypotheses[0]:
+                    pred_text = " ".join(hypotheses[0][0].words).strip().lower()
+                else:
+                    pred_text = ""
+                
+                ref_text = batch['texts'][i].lower()
+                
+                all_predictions.append(pred_text)
+                all_references.append(ref_text)
+                
+                # Track metrics
                     audio_dur = len(batch['audio_input'][i]) / model_config.sample_rate
-                    audio_durations.append(audio_dur)
-                    inference_times.append(inference_time / len(batch['audio_input']))
-                    
-                    # Track errors by audio length
-                    sample_wer = wer(ref_text, pred_text)
-                    length_bucket = int(audio_dur // 5) * 5  # 0-5s, 5-10s, etc.
+                audio_durations.append(audio_dur)
+                inference_times.append(inference_time / len(batch['audio_input']))
+                
+                # Track errors by audio length
+                sample_wer = wer(ref_text, pred_text)
+                length_bucket = int(audio_dur // 5) * 5  # 0-5s, 5-10s, etc.
                     errors_by_length[length_bucket].append(sample_wer)
                     
                     num_processed += 1
@@ -404,9 +404,9 @@ def evaluate_test_set(
                 sample_wer = wer(ref_text, pred_text)
                 length_bucket = int(audio_dur // 5) * 5
                 errors_by_length[length_bucket].append(sample_wer)
-
+                
                 num_processed += 1
-
+            
             if (batch_idx + 1) % 50 == 0:
                 print(f"  Processed {num_processed}/{min(max_samples_val, len(test_dataset))} samples...")
     
@@ -565,17 +565,17 @@ def main():
             raise ValueError("--model-path and --config-path are required for LaCT models.")
         
         print(f"\nInitializing LaCT CTC inference...")
-        inference = ASRCTCInference(
-            model_path=args.model_path,
-            config_path=args.config_path,
-            device=args.device,
-            use_pretrained_librispeech=True,  # Use LibriSpeech decoder files
-            beam_size=args.beam_width if use_beam_search else 1,
-            lm_weight=args.lm_weight,
-            word_score=args.word_score,
-            beam_threshold=args.beam_threshold,
-            nbest=1,
-        )
+    inference = ASRCTCInference(
+        model_path=args.model_path,
+        config_path=args.config_path,
+        device=args.device,
+        use_pretrained_librispeech=True,  # Use LibriSpeech decoder files
+        beam_size=args.beam_width if use_beam_search else 1,
+        lm_weight=args.lm_weight,
+        word_score=args.word_score,
+        beam_threshold=args.beam_threshold,
+        nbest=1,
+    )
         print(f"✓ LaCT CTC inference initialized")
     else:
         if Wav2Vec2ForCTC is None or Wav2Vec2Processor is None:

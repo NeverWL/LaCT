@@ -156,7 +156,7 @@ missing_deps=()
 for dep in datasets soundfile tqdm numpy; do
     if ! python -c "import $dep" 2>/dev/null; then
         missing_deps+=("$dep")
-    fi
+fi
 done
 
 if [[ ${#missing_deps[@]} -gt 0 ]]; then
@@ -232,7 +232,7 @@ if [[ -d "$LIBRISPEECH_PATH" && "$FORCE" != "true" ]]; then
     if [[ "$all_exist" == "true" ]]; then
         print_status "All requested subsets already exist"
         print_status "Using existing dataset (SLURM non-interactive mode)"
-        exit 0
+    exit 0
     else
         print_warning "Some subsets are missing, will download all requested subsets"
     fi
@@ -261,22 +261,22 @@ minutes=$(((total_time % 3600) / 60))
 seconds=$((total_time % 60))
 
 if [[ $exit_code -eq 0 ]]; then
-    echo ""
-    echo "=================================================="
-    print_success "LibriSpeech download completed successfully!"
-    echo "=================================================="
+echo ""
+echo "=================================================="
+print_success "LibriSpeech download completed successfully!"
+echo "=================================================="
     print_success "Downloaded to: $LIBRISPEECH_PATH"
-    print_success "Time taken: ${hours}h ${minutes}m ${seconds}s"
-    print_success "Subsets downloaded: $SUBSETS"
-    echo ""
-    print_status "Next steps:"
+print_success "Time taken: ${hours}h ${minutes}m ${seconds}s"
+print_success "Subsets downloaded: $SUBSETS"
+echo ""
+print_status "Next steps:"
     echo "  1. Start training:"
     echo "     cd $(dirname "$SCRIPT_DIR")"
     echo "     ./examples/train_librispeech.sh --data-dir $LIBRISPEECH_PATH"
-    echo ""
+echo ""
     echo "  2. Or use the setup script (will skip download):"
     echo "     ./scripts/setup_and_train.sh --skip-download --data-dir $(dirname $LIBRISPEECH_PATH)"
-    echo "=================================================="
+echo "=================================================="
 else
     print_error "Download failed with exit code $exit_code"
     exit $exit_code

@@ -207,17 +207,30 @@ class LibriSpeechDataset(ASRDataset):
     def __init__(
         self,
         root_dir: str,
-        subset: str = "train-clean-100",  # train-clean-100, train-clean-360, etc.
+        subset: str = "train-clean-100",  # train-clean-100, train-clean-360, train-other-500, dev-clean, test-clean
         **kwargs
     ):
         self.root_dir = Path(root_dir)
         self.subset = subset
-        
-        # Create manifest if it doesn't exist
-        manifest_path = self.root_dir / f"{subset}_manifest.json"
-        if not manifest_path.exists():
-            self._create_librispeech_manifest(manifest_path)
-        
+
+        # Support combined training over all train subsets (~960h)
+        # Accepted aliases: "train-960", "train-all", "train-full"
+        if subset in ["train-960", "train-all", "train-full"]:
+            manifest_path = self._create_or_get_combined_manifest(
+                ["train-clean-100", "train-clean-360", "train-other-500"],
+                out_name="train-960_manifest.json"
+            )
+        # Support comma-separated list of subsets, e.g., "train-clean-360,train-other-500"
+        elif "," in subset:
+            subset_list = [s.strip() for s in subset.split(",") if s.strip()]
+            out_name = f"{'-'.join(s.replace('train-', '') for s in subset_list)}_manifest.json"
+            manifest_path = self._create_or_get_combined_manifest(subset_list, out_name=out_name)
+        else:
+            # Single subset
+            manifest_path = self.root_dir / f"{subset}_manifest.json"
+            if not manifest_path.exists():
+                self._create_librispeech_manifest(manifest_path)
+
         super().__init__(str(manifest_path), **kwargs)
     
     def _create_librispeech_manifest(self, manifest_path: Path):
@@ -268,6 +281,44 @@ class LibriSpeechDataset(ASRDataset):
                 f.write(json.dumps(item) + '\n')
         
         logger.info(f"Created manifest with {len(manifest_data)} samples")
+
+    def _create_or_get_combined_manifest(self, subsets: List[str], out_name: str) -> Path:
+        """
+        Create (if needed) a combined manifest for multiple LibriSpeech subsets.
+        Returns path to the combined manifest file.
+        """
+        combined_manifest = self.root_dir / out_name
+        if combined_manifest.exists():
+            return combined_manifest
+
+        logger.info(f"Creating combined LibriSpeech manifest: {out_name}")
+        combined = []
+
+        for sub in subsets:
+            # Ensure each subset manifest exists
+            sub_manifest = self.root_dir / f"{sub}_manifest.json"
+            if not sub_manifest.exists():
+                # Temporarily set self.subset for manifest creation logging
+                prev_subset = getattr(self, "subset", None)
+                self.subset = sub
+                self._create_librispeech_manifest(sub_manifest)
+                if prev_subset is not None:
+                    self.subset = prev_subset
+
+            # Load entries
+            with open(sub_manifest, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        combined.append(json.loads(line))
+
+        # Write combined manifest
+        with open(combined_manifest, 'w', encoding='utf-8') as f:
+            for item in combined:
+                f.write(json.dumps(item) + '\n')
+
+        logger.info(f"Wrote combined manifest with {len(combined)} samples")
+        return combined_manifest
 
 
 class CommonVoiceDataset(ASRDataset):
