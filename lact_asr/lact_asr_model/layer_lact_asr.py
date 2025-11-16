@@ -333,36 +333,36 @@ class LaCTASRLayer(nn.Module):
         # Use Flash Attention if available, otherwise fallback to standard attention
         if FLASH_ATTN_AVAILABLE:
             # !!!S Contains at least one padding token in the sequence
-        if attention_mask is not None:
-            q, k, v, indices_q, cu_seq_lens, max_seq_lens = self._upad_input(q, k, v, attention_mask, q_len)
-            cu_seqlens_q, cu_seqlens_k = cu_seq_lens
-            max_seqlen_q, max_seqlen_k = max_seq_lens
-            o = flash_attn_varlen_func(
-                q, k, v,
-                cu_seqlens_q=cu_seqlens_q,
-                cu_seqlens_k=cu_seqlens_k,
-                max_seqlen_q=max_seqlen_q,
-                max_seqlen_k=max_seqlen_k,
-                causal=True,
-                window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
-            )
-            o = pad_input(o, indices_q, batch_size, q_len)
-        elif cu_seqlens is not None:
-            o = flash_attn_varlen_func(
-                q.squeeze(0), k.squeeze(0), v.squeeze(0),
-                cu_seqlens_q=cu_seqlens,
-                cu_seqlens_k=cu_seqlens,
-                max_seqlen_q=max_seqlen,
-                max_seqlen_k=max_seqlen,
-                causal=True,
-                window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
-            ).unsqueeze(0)
-        else:
-            o = flash_attn_func(
-                q, k, v,
-                causal=True,
-                window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
-            )
+            if attention_mask is not None:
+                q, k, v, indices_q, cu_seq_lens, max_seq_lens = self._upad_input(q, k, v, attention_mask, q_len)
+                cu_seqlens_q, cu_seqlens_k = cu_seq_lens
+                max_seqlen_q, max_seqlen_k = max_seq_lens
+                o = flash_attn_varlen_func(
+                    q, k, v,
+                    cu_seqlens_q=cu_seqlens_q,
+                    cu_seqlens_k=cu_seqlens_k,
+                    max_seqlen_q=max_seqlen_q,
+                    max_seqlen_k=max_seqlen_k,
+                    causal=True,
+                    window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
+                )
+                o = pad_input(o, indices_q, batch_size, q_len)
+            elif cu_seqlens is not None:
+                o = flash_attn_varlen_func(
+                    q.squeeze(0), k.squeeze(0), v.squeeze(0),
+                    cu_seqlens_q=cu_seqlens,
+                    cu_seqlens_k=cu_seqlens,
+                    max_seqlen_q=max_seqlen,
+                    max_seqlen_k=max_seqlen,
+                    causal=True,
+                    window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
+                ).unsqueeze(0)
+            else:
+                o = flash_attn_func(
+                    q, k, v,
+                    causal=True,
+                    window_size=(-1, -1) if self.window_size is None else (self.window_size-1, 0)
+                )
             # !!!E
         else:
             # Fallback to standard PyTorch attention
