@@ -22,6 +22,12 @@ export HF_HOME=/nfs/stak/users/limjar/hpc-share/LaCT/lact_asr/.cache
 # Activate virtual environment
 source /nfs/stak/users/limjar/hpc-share/myVenv/bin/activate
 
+# Weights & Biases (set your API key here or before sbatch)
+# export WANDB_API_KEY="YOUR_API_KEY"
+export WANDB_PROJECT=${WANDB_PROJECT:-lact-asr}
+export WANDB_RUN_NAME=${WANDB_RUN_NAME:-hybrid_full_${SLURM_JOB_ID:-local}}
+export WANDB_DIR=${WANDB_DIR:-./wandb}
+
 # Set environment variables
 export HOME="/nfs/stak/users/limjar"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -218,6 +224,13 @@ if [[ "$FREEZE_ENCODER" -eq 1 ]]; then
 fi
 if [[ "$ENABLE_TTT" -eq 1 ]]; then
     TRAIN_CMD="$TRAIN_CMD --enable_ttt --ttt_loss_type $TTT_LOSS_TYPE"
+fi
+if command -v wandb >/dev/null 2>&1 || python -c "import importlib,sys; sys.exit(0) if importlib.util.find_spec('wandb') else sys.exit(1)"; then
+    # Enable WandB if available; you can also export WANDB_API_KEY before submitting
+    TRAIN_CMD="$TRAIN_CMD --wandb --wandb_project lact-asr --wandb_run_name hybrid_full_${SLURM_JOB_ID:-local}"
+    print_status "Weights & Biases logging ENABLED (project=lact-asr, run=${SLURM_JOB_ID:-local})"
+else
+    print_warning "wandb not installed; skipping online logging"
 fi
 TRAIN_CMD="$TRAIN_CMD $RESUME_FLAG"
 # Note: NO --mixed_precision flag (disabled by default)

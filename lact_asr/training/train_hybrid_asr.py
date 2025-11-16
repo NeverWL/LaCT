@@ -27,6 +27,13 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import torchaudio
 from transformers import get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
 
+# Optional Weights & Biases
+try:
+    import wandb  # type: ignore
+    WANDB_AVAILABLE = True
+except Exception:
+    WANDB_AVAILABLE = False
+
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -96,6 +103,10 @@ class HybridASRTrainer(ASRTrainer):
         encoder_lr_scale: float = 0.1,  # Learning rate scale for encoder
         peak_lr: float = 5e-4,  # Peak learning rate
         warmup_steps: int = 10000,  # Warmup steps
+        # WandB
+        wandb_enable: bool = False,
+        wandb_project: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
     ):
         # Initialize parent class
         super().__init__(
@@ -122,6 +133,38 @@ class HybridASRTrainer(ASRTrainer):
         self.encoder_lr_scale = encoder_lr_scale
         self.peak_lr = peak_lr
         self.warmup_steps = warmup_steps
+        # WandB
+        self.wandb_enabled = bool(wandb_enable and WANDB_AVAILABLE)
+        if wandb_enable and not WANDB_AVAILABLE:
+            logger.warning("wandb requested but not available. Run `pip install wandb` to enable.")
+        if self.wandb_enabled:
+            try:
+                wandb.init(
+                    project=wandb_project or os.environ.get("WANDB_PROJECT", "lact-asr"),
+                    name=wandb_run_name or os.environ.get("WANDB_RUN_NAME", None),
+                    config={
+                        "peak_lr": peak_lr,
+                        "encoder_lr_scale": encoder_lr_scale,
+                        "warmup_steps": warmup_steps,
+                        "batch_size": train_dataloader.batch_size,
+                        "max_epochs": max_epochs,
+                        "gradient_accumulation_steps": gradient_accumulation_steps,
+                        "max_audio_duration": getattr(config, "max_audio_duration", None),
+                        "model": "HybridLaCTWav2Vec2",
+                        "hidden_size": config.hidden_size,
+                        "num_hidden_layers": config.num_hidden_layers,
+                        "num_attn_heads": config.num_attn_heads,
+                        "num_lact_heads": config.num_lact_heads,
+                        "ttt_enabled": getattr(config, "enable_ttt", True),
+                    },
+                )
+                try:
+                    wandb.watch(self.model, log="all", log_freq=logging_steps)
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.warning(f"Failed to initialize wandb: {e}")
+                self.wandb_enabled = False
         
         # Setup optimizer with different learning rates if not provided
         if optimizer is None:
@@ -307,6 +350,11 @@ def main():
     parser.add_argument("--ttt_loss_type", type=str, choices=["masked_prediction", "entropy"],
                        default="masked_prediction", help="Type of TTT loss")
     
+    # WandB
+    parser.add_argument("--wandb", action="store_true", help="Enable Weights & Biases logging")
+    parser.add_argument("--wandb_project", type=str, help="WandB project name")
+    parser.add_argument("--wandb_run_name", type=str, help="WandB run name")
+    
     # Data arguments (same as train_asr.py)
     parser.add_argument("--dataset_type", type=str, choices=["librispeech", "commonvoice", "generic"], 
                        default="librispeech", help="Type of dataset")
@@ -428,6 +476,9 @@ def main():
         encoder_lr_scale=args.encoder_lr_scale,
         peak_lr=args.peak_lr,
         warmup_steps=args.warmup_steps,
+        wandb_enable=args.wandb,
+        wandb_project=args.wandb_project,
+        wandb_run_name=args.wandb_run_name,
     )
     
     # Resume from checkpoint if provided
